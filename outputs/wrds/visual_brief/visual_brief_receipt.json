@@ -1,0 +1,23 @@
+{
+  "scope": "Presentation of saved study; no parameter changes or new simulations",
+  "input_sha256": {
+    "outputs\\wrds\\scenario_summary.csv": "55d48175d52c1b023da7feec82f46b670c07b39a97ddc6e82a6b5d6abdd2a805",
+    "outputs\\wrds\\sensitivity_summary.csv": "74419ba4449a22514f575b7d9efe6af9813b4ad137f9a57dd3bd082ac48099fa",
+    "outputs\\wrds\\tracking_risk_intervals.csv": "c22a3fe15b4ac2d8ef50d6549d596aa98228375911f99b2265aedbe1d3b583e5",
+    "outputs\\wrds_private\\daily.csv": "3daf7e074a460de197f3d81a4e25d75b768d7167c56af4496ba77d90960abc0d",
+    "outputs\\wrds_private\\benchmark.csv": "3187c3a72d373e4836990ceb0c17bc0de81526fddddade09b290f2ec9fa6e323"
+  },
+  "charts": [
+    "01_risk_aware_allocation.png",
+    "02_turnover_tradeoff.png",
+    "03_wealth_and_risk.png",
+    "04_sensitivity_economics.png"
+  ],
+  "data_checks": "TE and ending wealth reconciled to daily paths; all 9 constrained cases and all 8 sensitivities included",
+  "benchmark_cagr_pct": 8.100042847442367,
+  "benchmark_terminal_nav": 2541587.204346082,
+  "no_gold_turnover_reduction_pct": 60.258422164444326,
+  "no_gold_added_te_bps": 26.99100967941588,
+  "no_gold_cost_savings_bps": 1.098570198394004,
+  "median_constrained_te_reduction_pct": 35.50321273526509
+}

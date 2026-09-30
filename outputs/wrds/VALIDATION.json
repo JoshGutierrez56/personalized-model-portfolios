@@ -11,7 +11,8 @@
     "sensitivity.png"
   ],
   "independent_research_audit": "outputs/wrds/AUDIT.json",
-  "notebook_sha256": "988655693cca2cf1ea0ebcc0309ebcb5e9827c899247ea943ec6582924a6b740",
+  "notebook_sha256": "36034c0a42dd94948ed243b49854e91d5a88514e2cf86ede620db31b5632d89e",
   "research_source": "WRDS / CRSP CIZ; no Yahoo or synthetic fallback",
-  "raw_data_exported": false
+  "raw_data_exported": false,
+  "presentation_update_note": "Archive path updated in a markdown cell only; all executed code cells and outputs preserved unchanged."
 }

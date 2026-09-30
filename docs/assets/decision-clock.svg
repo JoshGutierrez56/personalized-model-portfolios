@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="390" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
+  <title id="title">A lagged decision, followed by self-funded execution</title>
+  <desc id="desc">At the prior month-end close, estimate risk from 756 trailing daily returns and propose allocations. On the next trading day, old holdings earn the daily return. Execute the planned allocation at that day's close and pay transaction costs from portfolio wealth. New positions earn subsequent returns and drift until the next rebalance.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#627282" stroke-width="1.5"/></marker></defs>
+  <rect width="1200" height="390" rx="8" fill="#F6F4EF"/>
+  <g font-family="Arial,Helvetica,sans-serif">
+    <text x="40" y="44" fill="#008578" font-size="14" font-weight="700" letter-spacing="1.5">RESEARCH DESIGN / THE MONTHLY DECISION CLOCK</text>
+    <text x="40" y="87" fill="#172E43" font-size="29" font-weight="700">Estimate first. Execute later. Let holdings drift.</text>
+    <path d="M375 203 H417 M767 203 H809" stroke="#627282" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="40" y="123" width="335" height="169" rx="5" fill="#FFFFFF" stroke="#DDE1E2"/>
+    <rect x="432" y="123" width="335" height="169" rx="5" fill="#FFFFFF" stroke="#DDE1E2"/>
+    <rect x="824" y="123" width="335" height="169" rx="5" fill="#FFFFFF" stroke="#DDE1E2"/>
+    <g fill="#008578" font-size="13" font-weight="700" letter-spacing="1"><text x="60" y="153">01 / PRIOR MONTH-END CLOSE</text><text x="452" y="153">02 / NEXT TRADING DAY</text><text x="844" y="153">03 / NEXT TRADING CLOSE</text></g>
+    <g fill="#172E43" font-size="23" font-weight="700"><text x="60" y="191">Form the allocation</text><text x="452" y="191">Earn the day's return</text><text x="844" y="191">Trade and fund costs</text></g>
+    <g fill="#627282" font-size="17">
+      <text x="60" y="226">756 trailing observations.</text><text x="60" y="253">Risk, bounds, and signal weights.</text>
+      <text x="452" y="226">Old holdings stay in place.</text><text x="452" y="253">No same-day return in the signal.</text>
+      <text x="844" y="226">Implement the planned allocation.</text><text x="844" y="253">Buys, sells, and costs reconcile.</text>
+    </g>
+    <path d="M40 318 H1160" stroke="#DDE1E2"/>
+    <text x="40" y="353" fill="#214B72" font-size="18" font-weight="700">Between rebalances</text>
+    <text x="258" y="353" fill="#627282" font-size="18">New holdings earn subsequent returns. Weights drift; there is no hidden daily reset.</text>
+  </g>
+</svg>

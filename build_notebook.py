@@ -242,7 +242,7 @@ real client data just because the returns come from WRDS.
 [source/quality receipt](outputs/wrds/data_quality.json),
 [run receipt](outputs/wrds/run_summary.json), and the automated tests.
 
-The original Yahoo/static study is superseded. Its files under `outputs/market/`
+The original Yahoo/static study is superseded. Its files under `archive/yahoo-prototype/outputs/market/`
 are preserved as historical artifacts, not presented as the current result.
 ''')
 code('''
