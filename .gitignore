@@ -2,8 +2,12 @@
 __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
-data/*.csv
-data/*.json
+data/**
+!data/.gitkeep
+outputs/wrds_private/
+outputs/validation_fixture/
+*.pgpass
+pgpass.conf
 outputs/synthetic/
 *.html
 .env

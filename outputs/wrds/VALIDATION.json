@@ -1,0 +1,17 @@
+{
+  "checked_utc": "2026-09-30T20:30:11.123926+00:00",
+  "unit_tests_passed": 22,
+  "unit_test_command": "python -m unittest discover -s tests -v",
+  "notebook_code_cells_executed": 8,
+  "notebook_errors": 0,
+  "figures_visually_inspected": [
+    "tracking_and_turnover.png",
+    "no_gold_history.png",
+    "annual_risk.png",
+    "sensitivity.png"
+  ],
+  "independent_research_audit": "outputs/wrds/AUDIT.json",
+  "notebook_sha256": "988655693cca2cf1ea0ebcc0309ebcb5e9827c899247ea943ec6582924a6b740",
+  "research_source": "WRDS / CRSP CIZ; no Yahoo or synthetic fallback",
+  "raw_data_exported": false
+}

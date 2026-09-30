@@ -1,10 +1,6 @@
-"""Small, inspectable portfolio-construction functions used by the notebook."""
+"""Inspectable portfolio constraints and optimizers used by the WRDS study."""
 
 from dataclasses import dataclass, field
-from pathlib import Path
-import hashlib
-import json
-from datetime import datetime, timezone
 
 import cvxpy as cp
 import numpy as np
@@ -127,10 +123,22 @@ def optimize_portfolio(target, covariance, rules, current=None, te_budget=None):
         raise ValueError("Covariance must be finite and symmetric")
     if np.linalg.eigvalsh(matrix).min() < -1e-10:
         raise ValueError("Covariance must be positive semidefinite")
-    w = cp.Variable(len(target))
+    # Eliminate fixed positions (e.g. prohibited ETF = 0), rather than giving
+    # an interior-point solver two opposing active inequalities for each one.
+    free = np.flatnonzero((hi - lo).to_numpy() > 1e-12)
+    fixed = lo.to_numpy().copy()
+    fixed[free] = 0.
+    if len(free) == 0:
+        weights = pd.Series(fixed, index=target.index)
+        validate_weights(weights, rules)
+        if te_budget is not None and tracking_error(weights, target, covariance) > te_budget + 2e-6:
+            raise ValueError("The fully fixed portfolio exceeds the tracking-error budget")
+        return weights
+    x = cp.Variable(len(free))
+    w = np.eye(len(target))[:, free] @ x + fixed
     active = w - target.to_numpy()
     variance = cp.quad_form(active, cp.psd_wrap(matrix))
-    constraints = [cp.sum(w) == 1, w >= lo.to_numpy(), w <= hi.to_numpy()]
+    constraints = [cp.sum(w) == 1, x >= lo.to_numpy()[free], x <= hi.to_numpy()[free]]
     if te_budget is None:
         objective = cp.Minimize(variance * 1e4)
     else:
@@ -145,13 +153,19 @@ def optimize_portfolio(target, covariance, rules, current=None, te_budget=None):
         constraints.append(cp.norm((100 * risk_root) @ active, 2) <= te_budget * 100)
         objective = cp.Minimize(cp.norm1(w - current.to_numpy()))
     problem = cp.Problem(objective, constraints)
-    problem.solve(solver="CLARABEL", tol_gap_abs=1e-8, tol_feas=1e-8, tol_gap_rel=1e-8)
+    for attempts, tolerance in enumerate([1e-8, 1e-7]):
+        problem.solve(solver="CLARABEL", tol_gap_abs=tolerance, tol_feas=tolerance,
+                      tol_gap_rel=tolerance, max_iter=300)
+        if problem.status == cp.OPTIMAL:
+            break
     if problem.status != cp.OPTIMAL or w.value is None:
         raise ValueError(f"No validated optimum: {problem.status}")
     weights = pd.Series(w.value, index=target.index)
     validate_weights(weights, rules)
     if te_budget is not None and tracking_error(weights, target, covariance) > te_budget + 2e-6:
         raise ValueError("Solved portfolio exceeds the tracking-error budget")
+    weights.attrs.update(solver_status=problem.status, solver_tolerance=tolerance,
+                         solver_retry_count=attempts)
     return weights
 
 
@@ -200,44 +214,8 @@ def run_study(training, holdout, clients=None, allowance_bps=25., cost_bps=5.):
     return results, weights, covariance
 
 
-def load_market_prices(cache_dir="data", refresh=False):
-    """Download adjusted daily closes. Fail explicitly; never substitute synthetic data."""
-    import yfinance as yf
-    cache_dir = Path(cache_dir)
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    path = cache_dir / "adjusted_close_2014_2025.csv"
-    metadata_path = cache_dir / "market_metadata.json"
-    if path.exists() and metadata_path.exists() and not refresh:
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        if hashlib.sha256(path.read_bytes()).hexdigest() != metadata["sha256"]:
-            raise ValueError("Cached market data hash changed; refresh explicitly")
-        prices = pd.read_csv(path, index_col=0, parse_dates=True)
-    else:
-        raw = yf.download(TICKERS, start="2014-01-01", end="2026-01-01",
-                          auto_adjust=True, progress=False, threads=False)
-        if raw.empty:
-            raise RuntimeError("Market download failed. Retry or explicitly select synthetic mode.")
-        prices = raw["Close"].reindex(columns=TICKERS)
-        prices.index = pd.to_datetime(prices.index).tz_localize(None)
-        prices.to_csv(path)
-        metadata = {"source": "Yahoo Finance via yfinance", "auto_adjust": True,
-                    "requested_start": "2014-01-01", "requested_end_exclusive": "2026-01-01",
-                    "downloaded_utc": datetime.now(timezone.utc).isoformat(),
-                    "yfinance_version": yf.__version__, "tickers": TICKERS,
-                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
-        metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-    prices = prices.reindex(columns=TICKERS)
-    if prices.index.duplicated().any() or not prices.index.is_monotonic_increasing:
-        raise ValueError("Price dates must be unique and sorted")
-    if prices.isna().any().any() or not np.isfinite(prices).all().all() or (prices <= 0).any().any():
-        raise ValueError("Missing or invalid prices; inspect the source instead of filling gaps")
-    if len(prices) < 2500 or prices.index.max() < pd.Timestamp("2025-12-30"):
-        raise ValueError("Incomplete download for the specified study period")
-    return prices, metadata
-
-
 def synthetic_prices(seed=42):
-    """Deterministic plumbing fixture, not evidence of market performance."""
+    """Deterministic test fixture only. Never used by the WRDS research pipeline."""
     rng = np.random.default_rng(seed)
     dates = pd.bdate_range("2014-01-02", "2025-12-31")
     factors = rng.normal(size=(len(dates), 3)) * np.array([.009, .004, .007])

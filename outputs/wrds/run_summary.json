@@ -1,0 +1,152 @@
+{
+  "completed_utc": "2026-09-30T20:28:37.478039+00:00",
+  "data_source": "WRDS / CRSP US Stock Database, CIZ (Flat File Format 2.0)",
+  "config": {
+    "start": "2014-01-01",
+    "end": "2025-12-31",
+    "lookback": 756,
+    "allowance_bps": 25.0,
+    "cost_bps": 5.0,
+    "initial_value": 1000000.0,
+    "covariance": "ledoit_wolf"
+  },
+  "out_of_sample_start": "2014-01-02",
+  "out_of_sample_end": "2025-12-31",
+  "evaluation_days": 3018,
+  "client_scenarios": 10,
+  "methods": [
+    "Proportional",
+    "Minimum risk",
+    "Lower turnover"
+  ],
+  "portfolio_paths": 30,
+  "rebalance_dates": 144,
+  "validated_allocation_decisions": 4320,
+  "strict_signal_before_execution": true,
+  "solver_retries_main": 0,
+  "solver_status_counts": {
+    "optimal": 2880,
+    "not_required": 1440
+  },
+  "sensitivity_specifications": [
+    {
+      "label": "252-day covariance",
+      "config": {
+        "start": "2014-01-01",
+        "end": "2025-12-31",
+        "lookback": 252,
+        "allowance_bps": 25.0,
+        "cost_bps": 5.0,
+        "initial_value": 1000000.0,
+        "covariance": "ledoit_wolf"
+      }
+    },
+    {
+      "label": "504-day covariance",
+      "config": {
+        "start": "2014-01-01",
+        "end": "2025-12-31",
+        "lookback": 504,
+        "allowance_bps": 25.0,
+        "cost_bps": 5.0,
+        "initial_value": 1000000.0,
+        "covariance": "ledoit_wolf"
+      }
+    },
+    {
+      "label": "Sample covariance",
+      "config": {
+        "start": "2014-01-01",
+        "end": "2025-12-31",
+        "lookback": 756,
+        "allowance_bps": 25.0,
+        "cost_bps": 5.0,
+        "initial_value": 1000000.0,
+        "covariance": "sample"
+      }
+    },
+    {
+      "label": "0bp risk allowance",
+      "config": {
+        "start": "2014-01-01",
+        "end": "2025-12-31",
+        "lookback": 756,
+        "allowance_bps": 0,
+        "cost_bps": 5.0,
+        "initial_value": 1000000.0,
+        "covariance": "ledoit_wolf"
+      }
+    },
+    {
+      "label": "50bp risk allowance",
+      "config": {
+        "start": "2014-01-01",
+        "end": "2025-12-31",
+        "lookback": 756,
+        "allowance_bps": 50,
+        "cost_bps": 5.0,
+        "initial_value": 1000000.0,
+        "covariance": "ledoit_wolf"
+      }
+    },
+    {
+      "label": "1bp trading cost",
+      "config": {
+        "start": "2014-01-01",
+        "end": "2025-12-31",
+        "lookback": 756,
+        "allowance_bps": 25.0,
+        "cost_bps": 1,
+        "initial_value": 1000000.0,
+        "covariance": "ledoit_wolf"
+      }
+    },
+    {
+      "label": "10bp trading cost",
+      "config": {
+        "start": "2014-01-01",
+        "end": "2025-12-31",
+        "lookback": 756,
+        "allowance_bps": 25.0,
+        "cost_bps": 10,
+        "initial_value": 1000000.0,
+        "covariance": "ledoit_wolf"
+      }
+    },
+    {
+      "label": "25bp trading cost",
+      "config": {
+        "start": "2014-01-01",
+        "end": "2025-12-31",
+        "lookback": 756,
+        "allowance_bps": 25.0,
+        "cost_bps": 25,
+        "initial_value": 1000000.0,
+        "covariance": "ledoit_wolf"
+      }
+    }
+  ],
+  "bootstrap": {
+    "repetitions": 1000,
+    "block_trading_days": 21,
+    "seed": 20260930,
+    "interpretation": "Paired descriptive intervals, not a strategy-selection significance claim."
+  },
+  "maximum_trade_to_lagged_adv20_pct": 0.2489634113477656,
+  "nonzero_trades_missing_adv20": 0,
+  "python": "3.10.11",
+  "packages": {
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "cvxpy": "1.7.5",
+    "scikit-learn": "1.7.2",
+    "psycopg2-binary": "2.9.12"
+  },
+  "code_sha256": {
+    "portfolio_engine.py": "a2147970f8803d895ad3404784a6d119bdadefa0ec43f8ca95b8b0586cbb7c0d",
+    "wrds_data.py": "5c0a4b0fbdb98288ad841a85f79c823844dfe4b0a173a37210cad4e8346fbdb3",
+    "walkforward.py": "796e1a2c54fb5f38071721bfd8eddc8c8acc1d21b86087c1fffb4b87d39b9c3c",
+    "run_research.py": "45dcdd69e996ee1033821a519a577802d86b036bd54b76c886540b2e29c14275"
+  },
+  "interpretation": "Historical WRDS-backed simulation of hypothetical constrained ETF accounts; not live trading or alpha evidence."
+}

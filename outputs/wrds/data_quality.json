@@ -1,0 +1,42 @@
+{
+  "source": "WRDS / CRSP US Stock Database, CIZ (Flat File Format 2.0)",
+  "retrieved_utc": "2026-09-30T20:12:49.822175+00:00",
+  "tables": {
+    "returns": "crsp.dsf_v2",
+    "identities": "crsp.stksecurityinfohist",
+    "calendar": "crsp.metaexchangecalendar"
+  },
+  "return_field": "dlyret",
+  "identity_asof": "2010-01-04",
+  "requested_start": "2010-01-04",
+  "requested_end": "2025-12-31",
+  "security_day_rows": 32192,
+  "trading_days": 4024,
+  "assets": 8,
+  "missing_returns": 0,
+  "duplicate_security_dates": 0,
+  "return_flags": {
+    "dlyretmissflg": {
+      "NA": 32192
+    },
+    "dlyretdurflg": {
+      "D1": 25192,
+      "D3": 5808,
+      "D4": 864,
+      "D2": 320,
+      "DU": 8
+    },
+    "dlydelflg": {
+      "N": 32192
+    },
+    "tradingstatusflg": {
+      "A": 32192
+    }
+  },
+  "local_source_file_sha256": {
+    "daily.csv": "696aa0f881c6c95bb9cbd6536d82d71e0589221bae18f04932602a492bea0711",
+    "identities.csv": "77b06ec307a732a2c62840da34279709f5c9ca0985f18636e01a06c1a08befcb",
+    "calendar.csv": "69b684681dd34a2fdc662563a3e060cb7d86b71e4f7d8cea9f8f6ac95938b53a"
+  },
+  "license_boundary": "Raw CRSP extracts and detailed daily simulation files are local-only and gitignored."
+}

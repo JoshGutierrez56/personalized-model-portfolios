@@ -1,28 +1,55 @@
 # Personalized Model Portfolios
 
-**How much customization can a portfolio absorb before its exposures change materially?**
+## The cost of customization — WRDS / CRSP edition
 
-A small Jupyter research project on an ordinary portfolio-management problem: the
-model allocation is available, but each account has different restrictions and
-starting holdings.
+**How much tracking risk should a portfolio manager accept to accommodate account
+restrictions and avoid unnecessary trading?**
 
-The notebook compares bounded proportional allocation, minimum-tracking-risk
-optimization, and a lower-turnover allocation with an explicit tracking-risk budget.
-It uses eight ETFs and ten hypothetical client scenarios. No client or employer
-data are used.
+This Jupyter study now uses **CRSP daily total returns retrieved directly from
+WRDS** and a funded walk-forward portfolio simulation. It replaces the original
+Yahoo/static-allocation version.
 
-## Start here
+### What is real
 
-Open [the notebook](01_cost_of_customization.ipynb) to read the executed study.
-The first version estimates risk using **2014–2021** prices, then checks the frozen
-allocations against **2022–2025** returns. This is a portfolio-construction study and
-later-period exposure diagnostic, not a net-return strategy backtest.
+- **32,192 CRSP security-day observations**, eight ETFs, **2010–2025**.
+- Historical security identities resolved to permanent identifiers at the sample
+  start; CRSP CIZ return flags and trading-calendar coverage are validated.
+- A **2014–2025** evaluation with lagged risk estimates, monthly execution,
+  drifting holdings and transaction costs funded from each portfolio.
 
-![Tracking risk by account restriction](outputs/market/tracking_risk.png)
+The policy weights, client restrictions and initial $1 million accounts are
+hypothetical experimental inputs. Trading-cost rates are stated assumptions,
+not observed fills. WRDS returns do not turn those assumptions into client data.
 
-## Run in Jupyter
+## Read the research
 
-Python 3.11 or 3.12 is recommended.
+Open the [executed notebook](01_cost_of_customization.ipynb).
+
+![WRDS tracking risk and turnover](outputs/wrds/tracking_and_turnover.png)
+
+The notebook compares ten account scenarios and three implementation methods:
+
+1. **Bounded proportional allocation** under the client's restrictions.
+2. **Minimum estimated tracking risk** relative to the policy model.
+3. **Lower turnover within a risk budget**, initially 25 basis points above the
+   minimum feasible annualized tracking error.
+
+The full design produces 30 portfolio paths and **4,320 monthly allocation
+decisions**, with calendar-year breakdowns, paired block uncertainty intervals
+and eight sensitivity specifications. Results describe implementation trade-offs,
+not alpha or a recommendation to trade the portfolios.
+
+- [Findings and PM interpretation](docs/RESULTS.md)
+- [Research design and execution clock](docs/METHODOLOGY.md)
+- [WRDS setup, data contract and licensing](docs/DATA.md)
+- [Data-quality receipt](outputs/wrds/data_quality.json)
+- [Run configuration and verification receipt](outputs/wrds/run_summary.json)
+- [Aggregate scenario results](outputs/wrds/scenario_summary.csv)
+- [Sensitivity results](outputs/wrds/sensitivity_summary.csv)
+
+## Reproduce it
+
+Python 3.10–3.12; a licensed WRDS/CRSP account is required for the data extraction.
 
 ```bash
 git clone https://github.com/JoshGutierrez56/personalized-model-portfolios.git
@@ -30,83 +57,73 @@ cd personalized-model-portfolios
 python -m venv .venv
 ```
 
-Activate with `.venv\Scripts\activate` on Windows or `source .venv/bin/activate`
-on macOS/Linux, then:
+Activate `.venv` using `.venv\Scripts\activate` on Windows or
+`source .venv/bin/activate` on macOS/Linux, then:
 
 ```bash
 python -m pip install -r requirements.txt
-python -m ipykernel install --user --name personalized-portfolios --display-name "Personalized Portfolios"
+python wrds_data.py --download
+python run_research.py
 python -m jupyterlab
 ```
 
-Open `01_cost_of_customization.ipynb`, select the **Personalized Portfolios** kernel,
-then **Restart Kernel and Run All Cells**. The first market-data run needs internet;
-later runs reuse a local, hash-checked cache. No API key is required. Set `DATA_MODE`
-to `"synthetic"` for an explicitly labeled offline example. A failed market download
-never silently becomes simulated data.
+Configure your existing local PostgreSQL password file as explained in
+[DATA.md](docs/DATA.md); no credentials are stored in the project. WRDS may request
+Duo verification. The download uses read-only bounded queries. Subsequent runs
+use a local, hash-verified extract.
 
-## What to look for
+Open `01_cost_of_customization.ipynb` and run all cells. Verified, complete cached
+research outputs are reused unless `RECOMPUTE=True`; changed code or data triggers
+a rerun. There is **no Yahoo or simulated-performance fallback**.
 
-- The risk cost of fund exclusions, position caps, and retained-holding floors.
-- How estimated tracking risk compares with a later-period risk diagnostic.
-- How much trading a 25-basis-point tracking-risk allowance can avoid.
-- A sample, pre-cost trade list for a hypothetical account.
-- Clear rejection of impossible constraints.
-
-Lower in-sample tracking risk is expected by construction. The useful question is
-whether the exposure trade-off remains sensible outside the estimation period.
-Results, charts, and data provenance are generated by the notebook, not hard-coded.
-
-## Initial result
-
-In the saved historical run, minimum-risk allocations had lower later-period
-tracking risk than proportional allocation in all nine constrained examples.
-Allowing an extra 25 basis points of estimated tracking error reduced one-way
-turnover by a median **6.33 percentage points** versus the minimum-risk portfolios.
-
-The trade-off is not free. For the no-gold account, the lower-turnover allocation
-needed 16.42% one-way turnover versus 26.01% for minimum risk, but its later-period
-tracking error was 1.91% versus 1.47%. This is the decision worth discussing:
-how much exposure difference is acceptable to avoid a trade?
-
-Those figures describe ten hypothetical accounts, one historical split, and a
-fixed exposure diagnostic. They are not evidence of higher investment returns.
-
-## Files
-
-- `01_cost_of_customization.ipynb`: research question, assumptions, calculations, charts, interpretation.
-- `portfolio_engine.py`: allocation rules, covariance estimation, optimization, and data loading.
-- `tests/test_engine.py`: constraint, risk-budget, cost-accounting, and holdout-isolation checks.
-- `outputs/market/`: executed historical-data tables, charts, and run provenance.
-- `build_notebook.py`: rebuilds the unexecuted notebook source; not needed to run it.
-
-Run the offline checks with:
+## Verification
 
 ```bash
 python -m unittest discover -s tests -v
+python audit_research.py
+python check_notebook.py
 ```
 
-## Assumptions worth challenging
+Tests cover chronology, future-return isolation, identical restriction sets,
+solver feasibility and risk budgets, fixed-weight exclusions, missing data,
+ambiguous identities, self-financing costs, and actual holdings drift. Artificial
+fixtures appear only in tests and are never used as the notebook's market evidence.
 
-The model weights, client scenarios, ETF universe, transaction-cost rates, and risk
-allowance are research choices. SHY is short Treasuries, not cash. Minimum position
-weights are not share-level no-sell rules. The later-period calculation applies
-fixed weights to daily returns, so it is not a funded, drifted-weights backtest.
-Costs are one-time estimates and are not debited from an account simulation.
-There is no tax-lot accounting, liability matching, private-market modeling, or
-production trading system.
+## Important interpretation
 
-The next step is a rolling, point-in-time transition simulation with actual
-holdings drift and explicit funding of costs. That is needed before making claims
-about net performance.
+Turnover savings are not automatically economically compelling. With liquid ETFs
+and low per-dollar trading costs, avoiding trades can save little money while
+accepting materially more tracking risk. The notebook calculates both effects
+and reports the trade-off even when it weakens the case for lower-turnover
+optimization.
 
-## Sources and development
+The benchmark is a frictionless policy portfolio with the same monthly timing.
+Caps/floors are enforced at execution closes; intervening drift is reported.
+SHY is a short Treasury fund, not cash. Weight floors are not share-level no-sell
+instructions. Total-return sleeves assume fractional holdings and frictionless
+reinvestment of distributions, without tax-lot or market-impact modeling.
 
-Market data: Yahoo Finance through [yfinance](https://ranaroussi.github.io/yfinance/),
-using adjusted closes. Downloaded prices stay in the local ignored `data/` folder;
-review the provider's terms for your use. Data revisions can change rerun results.
-Optimization: [CVXPY](https://www.cvxpy.org/) with CLARABEL. Risk estimation:
-[Ledoit–Wolf shrinkage](https://scikit-learn.org/stable/modules/generated/sklearn.covariance.LedoitWolf.html).
+Historical identity mapping does not remove fixed-universe selection bias, and
+lagged returns do not eliminate revisions in the current CRSP vintage. This is
+historical research on model implementation, not stock-level direct indexing,
+a production trading system, or evidence of future returns.
 
-Developed with AI coding assistance. The notebook makes the assumptions and
-calculations available for review.
+## Repository layout
+
+| File | Purpose |
+|---|---|
+| `wrds_data.py` | Authenticated retrieval, historical IDs, strict coverage and source hashes |
+| `portfolio_engine.py` | Bounded allocations and checked convex optimizers |
+| `walkforward.py` | Lagged decisions, drifting sleeves, self-financed execution and metrics |
+| `run_research.py` | Complete study, sensitivities, charts and provenance |
+| `01_cost_of_customization.ipynb` | Executed research narrative and inspection |
+| `tests/` | Economic/data validation fixtures, not market results |
+| `outputs/wrds/` | Aggregate current research outputs |
+| `data/wrds/` | Local-only licensed input; excluded from Git |
+| `outputs/wrds_private/` | Local-only detailed daily paths, holdings and trades |
+
+The original `outputs/market/` files are preserved as superseded historical
+artifacts. Their Yahoo/static results are **not** the current WRDS results.
+
+Built with pandas, NumPy, scikit-learn, CVXPY/CLARABEL and PostgreSQL/libpq, with
+AI coding assistance. The methods and provenance are available for review.
