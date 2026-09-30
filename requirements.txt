@@ -1,0 +1,10 @@
+numpy==2.2.6
+pandas==2.2.3
+matplotlib==3.10.9
+cvxpy==1.7.5
+scikit-learn==1.7.2
+yfinance==1.5.1
+nbformat==5.10.4
+nbclient==0.11.0
+jupyterlab>=4.3,<5
+ipykernel>=6.29,<8

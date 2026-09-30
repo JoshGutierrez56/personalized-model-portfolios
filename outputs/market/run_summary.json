@@ -1,0 +1,42 @@
+{
+  "data_mode": "market",
+  "data_provenance": {
+    "source": "Yahoo Finance via yfinance",
+    "auto_adjust": true,
+    "requested_start": "2014-01-01",
+    "requested_end_exclusive": "2026-01-01",
+    "downloaded_utc": "2026-09-30T18:28:25.461134+00:00",
+    "yfinance_version": "1.5.1",
+    "tickers": [
+      "SPY",
+      "IWM",
+      "EFA",
+      "EEM",
+      "IEF",
+      "TLT",
+      "GLD",
+      "SHY"
+    ],
+    "sha256": "d2d42eccb9595b1c2248e4a98206b33159629309d1160a9c84c7ed3b865acf38"
+  },
+  "training_end": "2021-12-31",
+  "holdout_start": "2022-01-03",
+  "holdout_end": "2025-12-31",
+  "training_observations": 2014,
+  "holdout_observations": 1003,
+  "client_scenarios": 10,
+  "allocations": 30,
+  "extra_te_budget_bps": 25.0,
+  "cost_bps_per_traded_dollar": 5.0,
+  "lower_holdout_risk_count": 9,
+  "constrained_scenarios": 9,
+  "python": "3.10.11",
+  "versions": {
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "cvxpy": "1.7.5",
+    "scikit-learn": "1.7.2",
+    "yfinance": "1.5.1"
+  },
+  "interpretation": "Static construction and later-period risk diagnostic; not a funded strategy backtest."
+}
