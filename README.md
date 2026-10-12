@@ -1,5 +1,52 @@
 # Personalized Model Portfolios
 
+## Portfolio Validation & Investment Oversight Lab
+
+**Would I approve this rebalance—and can I independently explain its risks, costs and performance?**
+
+The portfolio implementation study below now has a separately implemented **Python + SQL challenger**. It reconstructs holdings, fees, NAV, benchmark returns and cumulative return contributions; challenges the decision clock, risk calculations and client constraints; and demonstrates a complete injected-fault → diagnosis → correction → retest workflow.
+
+**Start here:** [Interactive evidence dashboard](https://joshgutierrez56.github.io/personalized-model-portfolios/) · [Two-page decision memo](outputs/oversight/Portfolio_Oversight_Memo.pdf) · [Excel control workbook](outputs/oversight/Portfolio_Oversight.xlsx)
+
+**Understand and defend it:** [20-page interview guide · PDF](outputs/oversight/Interview_Guide.pdf) · [Editable guide · DOCX](outputs/oversight/Interview_Guide.docx) · [Technical methodology](docs/OVERSIGHT_METHODOLOGY.md)
+
+[![Portfolio oversight dashboard showing baseline PASS, five detected injected failures, thirty reconstructed paths and the investment decision.](docs/assets/oversight-preview.png)](https://joshgutierrez56.github.io/personalized-model-portfolios/)
+
+| Verified evidence | Scope |
+| :--- | :--- |
+| **30 paths / 90,540 daily records** independently reconstructed | 10 hypothetical accounts × 3 methods; actual WRDS/CRSP returns |
+| **115 baseline controls passed** | Accounting, source/configuration provenance, chronology, risk windows, constraints and versioned SQL |
+| **5 / 5 deliberately injected faults blocked** | Wrong return definition, duplicate trade, look-ahead timestamp, prohibited allocation and fee error |
+| **Clean retest passed; original input hashes unchanged** | Mutations operate only on in-memory copies |
+| **71 tests passed with warnings treated as errors** | Original research, hand-derived challenger fixtures and independent adversarial cases |
+
+This is **retrospective research validation**, not a production trading platform. Passing the technical gate releases evidence for review; it does not authorize an investment decision. The main investment conclusion remains: in the no-gold account, roughly 60% less turnover saved only about $110 annually per constant $1m at the assumed cost rate, while adding about 27bp of realized tracking risk.
+
+### Review or reproduce
+
+The dashboard, workbook, reports and aggregate receipts are public. Licensed source rows and detailed security-day ledgers are not distributed. Anyone can run the artificial validation fixtures without a WRDS login:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pytest -q -W error
+```
+
+With your own licensed inputs and the saved original research ledgers:
+
+```bash
+python run_oversight.py
+python build_oversight_reports.py
+python build_oversight_dashboard.py
+```
+
+[Reproduction routes and privacy boundaries](docs/OVERSIGHT_REPRODUCING.md) · [Baseline receipt](outputs/oversight/validation_summary.json) · [Incident evidence](outputs/oversight/incident_summary.json) · [Run fingerprints](outputs/oversight/run_receipt.json) · [Independent SQL](sql/)
+
+The checker uses a separately declared [policy contract](oversight_contract.json), not the production engine's validation/accounting functions. It still shares source data, economic assumptions and a numerical covariance dependency; it does not certify optimizer optimality. Faults are deliberately injected tests—not client incidents—and a wrong-return replay with fixed recorded trades is diagnostic disagreement, not an investable alternative strategy. The project was built with AI coding and drafting assistance, with source, checks and interpretation kept inspectable.
+
+---
+
+## Original portfolio implementation research
+
 **The cost of customization · Multi-asset portfolio research · WRDS / CRSP**
 
 How much tracking risk should a portfolio manager accept to accommodate a client's restrictions—and how much is avoiding a trade actually worth?

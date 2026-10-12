@@ -1,0 +1,66 @@
+{
+  "checked_utc": "2026-10-12T23:53:00.614009+00:00",
+  "status": "PASS",
+  "tests": {
+    "command": "python -m pytest -q -W error",
+    "passed": 71,
+    "failed": 0
+  },
+  "baseline_controls": 115,
+  "run_id": "oversight-20261012T234925",
+  "fault_detection": "5/5",
+  "pdf_qa": {
+    "Portfolio_Oversight_Memo": {
+      "pages": 2,
+      "bookmarks": 0,
+      "text_characters": 4749,
+      "out_of_bounds": [],
+      "replacement_glyph_pages": []
+    },
+    "Interview_Guide": {
+      "pages": 20,
+      "bookmarks": 89,
+      "text_characters": 57899,
+      "out_of_bounds": [],
+      "replacement_glyph_pages": []
+    },
+    "Oversight_Methodology": {
+      "pages": 7,
+      "bookmarks": 15,
+      "text_characters": 19951,
+      "out_of_bounds": [],
+      "replacement_glyph_pages": []
+    }
+  },
+  "dashboard_qa": {
+    "results": [
+      {
+        "width": 1440,
+        "height": 900,
+        "overflow": false
+      },
+      {
+        "width": 1024,
+        "height": 768,
+        "overflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "case_selection": true,
+    "scenario_selection": true,
+    "control_filter": "12 of 115 controls shown",
+    "keyboard_focus": true
+  },
+  "public_data_scope": "Aggregate results only; licensed source and detailed security-day records excluded.",
+  "release_code_sha256": {
+    "run_oversight.py": "4a594962d3812fb1cf4f9299de917d0378e00b02b841151df6f955f81666b492",
+    "oversight_core.py": "50ffbe09e36b8eb369227aa2ef27e4fef7335a6aa5cc2e43b75e3066271ab747",
+    "build_oversight_reports.py": "e279edf7f96076456e15b263d81eb216fe6dd1b36b0573439e74f30e78e1dd59",
+    "build_oversight_dashboard.py": "9dbc3ca0d4ce10033ec6e9ab95f8a3310d0dccb97960e219f890746e7ed54b33"
+  }
+}

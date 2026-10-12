@@ -5,11 +5,16 @@ __pycache__/
 data/**
 !data/.gitkeep
 outputs/wrds_private/
+outputs/oversight_private/
+outputs/oversight_qa/
+graphify-out/
 outputs/validation_fixture/
 *.pgpass
 pgpass.conf
 outputs/synthetic/
 *.html
+!outputs/oversight/index.html
+!docs/index.html
 .env
 .env.*
 *.log

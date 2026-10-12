@@ -1,0 +1,164 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Independent challenger contract for the preserved September 30 study; invented accounts, not actual clients.",
+  "independence": "Inputs independently declared after read-only inspection. No production portfolio or validation functions imported. Production file hashes and executed configuration checked for drift. Shared numerical dependency scikit-learn LedoitWolf is disclosed; optimizer optimality is not certified.",
+  "source_start": "2010-01-04",
+  "source_end": "2025-12-31",
+  "tickers": [
+    "SPY",
+    "IWM",
+    "EFA",
+    "EEM",
+    "IEF",
+    "TLT",
+    "GLD",
+    "SHY"
+  ],
+  "target": [
+    0.3,
+    0.1,
+    0.15,
+    0.05,
+    0.2,
+    0.05,
+    0.1,
+    0.05
+  ],
+  "current": [
+    0.4,
+    0.15,
+    0.1,
+    0.05,
+    0.1,
+    0.05,
+    0.1,
+    0.05
+  ],
+  "annualization": 252,
+  "config": {
+    "start": "2014-01-01",
+    "end": "2025-12-31",
+    "lookback": 756,
+    "allowance_bps": 25.0,
+    "cost_bps": 5.0,
+    "initial_value": 1000000.0,
+    "covariance": "ledoit_wolf"
+  },
+  "methods": [
+    "Proportional",
+    "Minimum risk",
+    "Lower turnover"
+  ],
+  "clients": [
+    {
+      "name": "Unrestricted",
+      "blocked": [],
+      "floors": {},
+      "caps": {}
+    },
+    {
+      "name": "No gold",
+      "blocked": [
+        "GLD"
+      ],
+      "floors": {},
+      "caps": {}
+    },
+    {
+      "name": "No emerging markets",
+      "blocked": [
+        "EEM"
+      ],
+      "floors": {},
+      "caps": {}
+    },
+    {
+      "name": "No long Treasuries",
+      "blocked": [
+        "TLT"
+      ],
+      "floors": {},
+      "caps": {}
+    },
+    {
+      "name": "10% short Treasuries",
+      "blocked": [],
+      "floors": {
+        "SHY": 0.1
+      },
+      "caps": {}
+    },
+    {
+      "name": "20% short Treasuries",
+      "blocked": [],
+      "floors": {
+        "SHY": 0.2
+      },
+      "caps": {}
+    },
+    {
+      "name": "Retain 40% US large cap",
+      "blocked": [],
+      "floors": {
+        "SPY": 0.4
+      },
+      "caps": {}
+    },
+    {
+      "name": "20% US small-cap floor",
+      "blocked": [],
+      "floors": {
+        "IWM": 0.2
+      },
+      "caps": {}
+    },
+    {
+      "name": "20% position cap",
+      "blocked": [],
+      "floors": {},
+      "caps": {
+        "SPY": 0.2,
+        "IWM": 0.2,
+        "EFA": 0.2,
+        "EEM": 0.2,
+        "IEF": 0.2,
+        "TLT": 0.2,
+        "GLD": 0.2,
+        "SHY": 0.2
+      }
+    },
+    {
+      "name": "Domestic and liquid",
+      "blocked": [
+        "EFA",
+        "EEM"
+      ],
+      "floors": {
+        "SHY": 0.15
+      },
+      "caps": {}
+    }
+  ],
+  "tolerances": {
+    "dollars": 0.0001,
+    "returns": 1e-10,
+    "weights": 2e-06,
+    "risk": 2e-06,
+    "risk_reconciliation": 1e-10
+  },
+  "production_sha256": {
+    "portfolio_engine.py": "115844df66f75492cc8ec56754b775da75563537f0d193a738fa3c2e2f45e948",
+    "walkforward.py": "796e1a2c54fb5f38071721bfd8eddc8c8acc1d21b86087c1fffb4b87d39b9c3c",
+    "wrds_data.py": "5c0a4b0fbdb98288ad841a85f79c823844dfe4b0a173a37210cad4e8346fbdb3"
+  },
+  "limitations": [
+    "Current-vintage restricted eight-ETF universe and already-exposed history.",
+    "Total-return sleeve dollars, not tax lots or executable shares.",
+    "Costs are modeled, not observed execution costs.",
+    "Inter-rebalance drift is monitored, not mislabeled as a post-trade breach.",
+    "Reconciliation is independent arithmetic, not independent vendor data or optimizer optimality proof.",
+    "No claim of historical data availability, tax-aware trading, live production or predictive alpha."
+  ],
+  "require_source_provenance": true,
+  "production_hash_convention": "sha256-utf8-universal-newlines-lf-v1"
+}

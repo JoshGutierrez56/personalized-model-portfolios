@@ -1,0 +1,58 @@
+{
+  "created_utc": "2026-10-12T23:52:30.115337+00:00",
+  "workbook": {
+    "path": "Portfolio_Oversight.xlsx",
+    "sheets": [
+      "Decision",
+      "Controls",
+      "Exceptions",
+      "RiskCost",
+      "NoGoldDecision",
+      "Stress",
+      "Reconciliation",
+      "PathMetrics",
+      "LinkedTotals",
+      "Contributions",
+      "RunEvidence",
+      "WorkedExample"
+    ],
+    "formula_note": "Open in Excel/LibreOffice to recalculate teaching formulas; research figures are materialized values."
+  },
+  "memo": "Portfolio_Oversight_Memo.pdf",
+  "Interview_Guide": {
+    "pdf": "Interview_Guide.pdf",
+    "docx": "Interview_Guide.docx",
+    "source_sha256": "40266dfbd0a56179c0762e6bb65fd09b8b3f00979592724f62eefd9d9b0c00a1"
+  },
+  "Oversight_Methodology": {
+    "pdf": "Oversight_Methodology.pdf",
+    "docx": "Oversight_Methodology.docx",
+    "source_sha256": "b079e833cd3618ae7006c3e5adb7c97383350fa7731ab2561d8fc9012d0128a6"
+  },
+  "files": {
+    "Interview_Guide.docx": {
+      "bytes": 59887,
+      "sha256": "aed0ccffbb08a288c96a78780e87b40cc5ff435566df6be2f27053529402bb3c"
+    },
+    "Interview_Guide.pdf": {
+      "bytes": 169756,
+      "sha256": "eb36ce93e0ba7ea9bc8b734278bfcaf2822a1d883abd4b78706504be2cc1b1fc"
+    },
+    "Oversight_Methodology.docx": {
+      "bytes": 45158,
+      "sha256": "3f10959a56b333e79c96cd404938599c6f6b4588b36c6cf447e0d7b578b70aa3"
+    },
+    "Oversight_Methodology.pdf": {
+      "bytes": 118475,
+      "sha256": "ffd37cdfb94e23c84c13cc9f3aa1a1650e397bfaed40c3d13b48b5992cf233ff"
+    },
+    "Portfolio_Oversight.xlsx": {
+      "bytes": 49572,
+      "sha256": "f56b93c2b6ba884749e5b94292c4623c692737fb25ad9424a009efc534a5d497"
+    },
+    "Portfolio_Oversight_Memo.pdf": {
+      "bytes": 77780,
+      "sha256": "f6a3d6ea8663ace2b413b1ecc1c559db159c3752c508f9810105be1ff29ee798"
+    }
+  }
+}
