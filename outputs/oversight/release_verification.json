@@ -141,5 +141,25 @@
     "control_metadata.py": "5a46fff13c703bc2f0685e6ddce5f1978bd9187d036bbb0a4d96137ccd6483d2",
     "build_oversight_reports.py": "3b39e21c13f553617b62446840f9feb3ff18a2fccc0b18a1a912d01c7c7d70d7",
     "build_oversight_dashboard.py": "362982a774e22236562dceb16488a99e7601ed5b9a46f2385396348db34b8539"
+  },
+  "guard_followup": {
+    "checked_utc": "2026-10-13T04:19:55.529421+00:00",
+    "scope": "Public aggregate consistency guard only; empirical run and original report/layout checks above were not rerun.",
+    "base_commit": "166530861ea2af021775fda5ecf0aec7951ec220",
+    "tests": {
+      "command": "python -m pytest -q -W error",
+      "passed": 282,
+      "failed": 0,
+      "skipped": 0
+    },
+    "previously_accepted_mutations_now_rejected": 7,
+    "public_bundle": "PASS: 30 attribution paths, 60 stress rows",
+    "dashboard_rebuild": "Byte-identical to existing committed dashboard",
+    "original_production_core_and_public_evidence_fingerprints_unchanged": true,
+    "empirical_rerun": false,
+    "code_sha256": {
+      "release_evidence.py": "3478e6d8600332b062e815a7f1d756a43f8bc8777c763e35bf6265c2791d1283"
+    },
+    "limitations": "Aggregate consistency, not source authentication. No inferred initial-capital linkage to dollar path metrics. Existing empirical input hashes remain historical evidence, not a new private-ledger audit."
   }
 }

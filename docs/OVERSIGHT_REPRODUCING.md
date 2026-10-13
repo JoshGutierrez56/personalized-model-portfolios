@@ -39,6 +39,12 @@ Read the saved receipts in `outputs/oversight/`:
 
 `run_receipt.json` binds the baseline, incident, stress and scenario artifacts by exact SHA-256. Report/dashboard generation checks their agreement, statuses, domain-specific incident detection, corrected retests, and shared source fingerprints before rendering. `.gitattributes` preserves those artifact bytes across Windows/Linux clones. This detects accidental mixed or altered evidence; hashes are not an external attestation or a substitute for the licensed source.
 
+The public guard also checks internal financial identities even when altered artifacts have been rehashed: linked portfolio contributions plus costs must reconcile to portfolio return, benchmark contributions to benchmark return, and active contributions to the portfolio-minus-benchmark difference. Contribution maps must cover the same assets and the shared benchmark must agree across paths. Historical-stress gaps must equal net minus benchmark return; returns cannot fall below −100%, drawdown must be between −100% and zero and include the loss from starting wealth, and each episode must use one shared benchmark return. Reconciliation tolerances are `1e-10` in return fractions and `1e-8` in percentage points. These checks establish aggregate consistency, not that a self-consistent replacement bundle came from authentic market observations.
+
+Guard-only changes can be verified against the existing public bundle without rerunning the licensed study. The original empirical run receipt remains a historical record of the code and inputs used then; the separately dated release-verification receipt records later guard/test checks. Do not relabel an old empirical run as newly executed merely because its public evidence passes a newer guard.
+
+The public attribution checks do not infer initial capital or equate a return fraction with terminal dollar NAV. Cross-table capital-scale reconstruction still belongs to the independent validator with its explicit policy contract and licensed input ledgers.
+
 The dashboard embeds aggregate receipts and works without an API. Open `docs/index.html` locally, or use the published Pages link in the README. Selecting an injected case changes the fault explanation and failure evidence. Selecting an account changes the risk/cost comparison. This is a saved-evidence viewer, not a live market terminal.
 
 ## 2. Empirical rerun with licensed data

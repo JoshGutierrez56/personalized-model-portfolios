@@ -51,6 +51,17 @@ SCENARIO_RECONCILIATION = {
     "days_weight_limits_drifted": ("all_days_weight_limits_drifted", 1, 0),
     "max_weight_limit_drift_pp": ("maximum_interim_bound_drift", 100, 2e-4),
 }
+# Attribution is expressed in return fractions; stress in percentage points.
+RETURN_TOLERANCE = 1e-10
+PERCENTAGE_POINT_TOLERANCE = 1e-8
+ATTRIBUTION_SCALARS = (
+    "portfolio_total_return", "benchmark_total_return",
+    "active_total_return_difference", "linked_cost_contribution",
+    "active_linking_residual",
+)
+ATTRIBUTION_MAPS = (
+    "linked_asset_pnl", "linked_benchmark_pnl", "linked_active_asset_pnl",
+)
 
 
 class ReleaseEvidenceError(ValueError):
@@ -195,6 +206,50 @@ def _scenarios(raw):
     return rows
 
 
+def _attribution(attribution, asset_count):
+    """Check producer linking identities without assuming initial capital."""
+    asset_keys = None
+    shared_benchmark = None
+    shared_benchmark_return = None
+    for row in attribution:
+        label = f"attribution {_path_pair(row, 'attribution')}"
+        # Normalize individually finite JSON integers before arithmetic: summing
+        # huge ints then mixing a float can otherwise raise OverflowError.
+        values = {key: float(_number(row.get(key), f"{label}.{key}")) for key in ATTRIBUTION_SCALARS}
+        maps = {}
+        for key in ATTRIBUTION_MAPS:
+            mapping = _mapping(row.get(key), f"{label}.{key}")
+            _require(len(mapping) == asset_count and all(isinstance(k, str) and k.strip() for k in mapping),
+                     f"{label}.{key} asset count/keys disagreement")
+            if asset_keys is None:
+                asset_keys = set(mapping)
+            _require(set(mapping) == asset_keys, f"{label}.{key} asset coverage disagreement")
+            maps[key] = {ticker: float(_number(value, f"{label}.{key}.{ticker}")) for ticker, value in mapping.items()}
+        portfolio, benchmark, active = (maps[key] for key in ATTRIBUTION_MAPS)
+        cost = values["linked_cost_contribution"]
+        _require(cost <= RETURN_TOLERANCE, f"{label} linked cost must be nonpositive")
+        if shared_benchmark is None:
+            shared_benchmark = benchmark
+            shared_benchmark_return = values["benchmark_total_return"]
+        _require(abs(values["benchmark_total_return"] - shared_benchmark_return) <= RETURN_TOLERANCE
+                 and all(abs(benchmark[t] - shared_benchmark[t]) <= RETURN_TOLERANCE for t in asset_keys),
+                 f"{label} shared benchmark disagreement")
+        identities = {
+            "portfolio linking": sum(portfolio.values()) + cost - values["portfolio_total_return"],
+            "benchmark linking": sum(benchmark.values()) - values["benchmark_total_return"],
+            "active return difference": values["portfolio_total_return"] - values["benchmark_total_return"] - values["active_total_return_difference"],
+        }
+        for name, residual in identities.items():
+            _require(abs(residual) <= RETURN_TOLERANCE, f"{label} {name} disagreement")
+        _require(all(abs(active[t] - (portfolio[t] - benchmark[t])) <= RETURN_TOLERANCE for t in asset_keys),
+                 f"{label} per-asset active linking disagreement")
+        residual = sum(active.values()) + cost - values["active_total_return_difference"]
+        reported = values["active_linking_residual"]
+        _require(abs(residual) <= RETURN_TOLERANCE and abs(reported) <= RETURN_TOLERANCE
+                 and abs(residual - reported) <= RETURN_TOLERANCE,
+                 f"{label} active linking residual disagreement")
+
+
 def validate_release_bundle(root: Path) -> dict:
     """Return validated ``baseline, incidents, receipt, stress, scenarios``.
 
@@ -287,9 +342,11 @@ def validate_release_bundle(root: Path) -> dict:
     attribution = _sequence(aggregate.get("attribution_totals"), "baseline.aggregate.attribution_totals", nonempty=True)
     _require(all(isinstance(row, dict) for row in attribution), "attribution rows must be objects")
     _require(len(attribution) == len(paths) and {_path_pair(row, "attribution") for row in attribution} == paths, "attribution path count/coverage disagreement")
+    _attribution(attribution, counts["assets"])
     stress = _sequence(loaded["stress"], "stress", nonempty=True)
     episodes = {}
     episode_windows = {}
+    episode_benchmarks = {}
     for index, row in enumerate(stress):
         row = _mapping(row, f"stress[{index}]")
         episode = row.get("episode")
@@ -302,8 +359,19 @@ def validate_release_bundle(root: Path) -> dict:
         _require(start < end and sessions <= counts["evaluation_dates"], f"stress[{index}] has inconsistent window bounds/count")
         window = (start, end, sessions)
         _require(episode_windows.setdefault(episode, window) == window, f"stress episode {episode} window/count disagreement")
-        for key in ("net_return_pct", "benchmark_return_pct", "active_cumulative_return_pp", "window_max_drawdown_pct"):
-            _number(row.get(key), f"stress[{index}].{key}")
+        values = {key: float(_number(row.get(key), f"stress[{index}].{key}")) for key in (
+            "net_return_pct", "benchmark_return_pct", "active_cumulative_return_pp", "window_max_drawdown_pct")}
+        net, benchmark = values["net_return_pct"], values["benchmark_return_pct"]
+        drawdown = values["window_max_drawdown_pct"]
+        tolerance = PERCENTAGE_POINT_TOLERANCE
+        _require(net >= -100 - tolerance and benchmark >= -100 - tolerance,
+                 f"stress[{index}] return below -100 percent")
+        _require(-100 - tolerance <= drawdown <= tolerance and drawdown <= min(0, net) + tolerance,
+                 f"stress[{index}] drawdown range/terminal return disagreement")
+        _require(abs(values["active_cumulative_return_pp"] - (net - benchmark)) <= tolerance,
+                 f"stress[{index}] active gap disagreement")
+        _require(abs(episode_benchmarks.setdefault(episode, benchmark) - benchmark) <= tolerance,
+                 f"stress episode {episode} shared benchmark disagreement")
         seen = episodes.setdefault(episode, set())
         _require(pair not in seen, f"stress episode {episode} contains a duplicate path")
         seen.add(pair)

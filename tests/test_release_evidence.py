@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from release_evidence import (
+    ATTRIBUTION_MAPS, ATTRIBUTION_SCALARS,
     PUBLIC_ARTIFACTS, SCENARIO_NUMBERS, SCENARIO_RECONCILIATION, SOURCE_PATHS,
     ReleaseEvidenceError, validate_release_bundle,
 )
@@ -16,6 +17,17 @@ from release_evidence import (
 def _check(identifier, blocked=False):
     return {"id": identifier, "status": "BLOCK" if blocked else "PASS", "count": 2,
             "max_abs_error": 2.0 if blocked else 0.0, "tolerance": 0.1, "detail": "Synthetic check"}
+
+
+def _attribution(client, method):
+    # A zero net return after fees, but nonzero linked contributions.
+    return {"client": client, "method": method,
+            "portfolio_total_return": 0.0, "benchmark_total_return": 0.03,
+            "active_total_return_difference": -0.03,
+            "linked_asset_pnl": {"AA": 0.03, "BB": -0.02},
+            "linked_benchmark_pnl": {"AA": 0.01, "BB": 0.02},
+            "linked_active_asset_pnl": {"AA": 0.02, "BB": -0.04},
+            "linked_cost_contribution": -0.01, "active_linking_residual": 0.0}
 
 
 @pytest.fixture
@@ -28,7 +40,7 @@ def bundle():
         "aggregate": {"paths": 2, "evaluation_dates": 3, "execution_dates": 1, "source_dates": 4,
                       "assets": 2, "returns_rows": 8, "calendar_rows": 4, "daily_rows": 6,
                       "decisions_rows": 2, "trades_rows": 4, "benchmark_rows": 3,
-                      "attribution_totals": [{"client": client, "method": method} for client, method in pairs]},
+                      "attribution_totals": [_attribution(client, method) for client, method in pairs]},
     }
     cases = [{"id": f"SYN-{index}", "severity": "BLOCK", "expected_status": "BLOCK",
               "observed_status": "BLOCK", "detected": True, "expected_domain_failure_observed": True,
@@ -299,4 +311,150 @@ def test_duplicated_reconstructed_path_cannot_replace_missing_path(tmp_path, bun
     bundle["baseline"]["aggregate"]["path_metrics"][1] = deepcopy(bundle["baseline"]["aggregate"]["path_metrics"][0])
     _save(tmp_path, bundle)
     with pytest.raises(ReleaseEvidenceError, match="metric path count/coverage"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("field", ATTRIBUTION_SCALARS + ATTRIBUTION_MAPS)
+def test_attribution_requires_complete_schema_after_resealing(tmp_path, bundle, field):
+    del bundle["baseline"]["aggregate"]["attribution_totals"][0][field]
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match=field):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("field", ATTRIBUTION_SCALARS + ATTRIBUTION_MAPS)
+@pytest.mark.parametrize("value", [True, "0.0", None, float("nan"), float("inf")])
+def test_attribution_numbers_are_finite_and_not_coerced(tmp_path, bundle, field, value):
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    if field in ATTRIBUTION_MAPS:
+        row[field]["AA"] = value
+    else:
+        row[field] = value
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="finite number"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("field", ATTRIBUTION_MAPS)
+@pytest.mark.parametrize("mutation", ["empty", "missing", "renamed", "blank", "array"])
+def test_attribution_asset_schema_matches_all_maps_and_paths(tmp_path, bundle, field, mutation):
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][1]
+    if mutation == "array":
+        row[field] = [0.01, 0.02]
+    elif mutation == "empty":
+        row[field] = {}
+    elif mutation == "missing":
+        del row[field]["AA"]
+    else:
+        row[field]["CC" if mutation == "renamed" else " "] = row[field].pop("AA")
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="asset|must be an object"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("field,match", [
+    ("portfolio_total_return", "portfolio linking"),
+    ("benchmark_total_return", "benchmark linking"),
+    ("active_total_return_difference", "active return difference"),
+    ("active_linking_residual", "active linking residual"),
+    ("linked_asset_pnl", "portfolio linking"),
+    ("linked_benchmark_pnl", "benchmark linking"),
+    ("linked_active_asset_pnl", "per-asset active linking"),
+])
+def test_attribution_linking_identities_reject_resealed_changes(tmp_path, bundle, field, match):
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    if field in ATTRIBUTION_MAPS:
+        row[field]["AA"] += 0.1
+    else:
+        row[field] += 0.1
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match=match):
+        validate_release_bundle(tmp_path)
+
+
+def test_attribution_positive_cost_rejected_even_when_identities_hold(tmp_path, bundle):
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    row.update(linked_cost_contribution=0.01, portfolio_total_return=0.02,
+               active_total_return_difference=-0.01)
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="cost must be nonpositive"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("offset_total", [False, True])
+def test_shared_benchmark_rejected_even_when_path_linking_holds(tmp_path, bundle, offset_total):
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][1]
+    row["linked_benchmark_pnl"]["AA"] += 0.01
+    row["linked_active_asset_pnl"]["AA"] -= 0.01
+    if offset_total:
+        row["benchmark_total_return"] += 0.01
+        row["active_total_return_difference"] -= 0.01
+    else:
+        row["linked_benchmark_pnl"]["BB"] -= 0.01
+        row["linked_active_asset_pnl"]["BB"] += 0.01
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="shared benchmark disagreement"):
+        validate_release_bundle(tmp_path)
+
+
+def test_actual_active_residual_cannot_hide_behind_zero_reported_residual(tmp_path, bundle):
+    # Each per-asset error is within tolerance, but their sum is not.
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    for ticker in row["linked_active_asset_pnl"]:
+        row["linked_active_asset_pnl"][ticker] += 0.75e-10
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="active linking residual disagreement"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("updates,match", [
+    ({"active_cumulative_return_pp": 987}, "active gap disagreement"),
+    ({"benchmark_return_pct": -0.2, "active_cumulative_return_pp": -0.8}, "shared benchmark disagreement"),
+    ({"window_max_drawdown_pct": 25}, "drawdown range"),
+    ({"window_max_drawdown_pct": -101}, "drawdown range"),
+    ({"window_max_drawdown_pct": -0.5}, "drawdown range"),
+    ({"net_return_pct": -150, "active_cumulative_return_pp": -148.8}, "return below"),
+    ({"benchmark_return_pct": -150, "active_cumulative_return_pp": 149}, "return below"),
+])
+def test_stress_economic_contradictions_rejected_after_resealing(tmp_path, bundle, updates, match):
+    bundle["stress"][1].update(updates)
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match=match):
+        validate_release_bundle(tmp_path)
+
+
+def test_linking_and_stress_tolerate_roundoff_in_declared_units(tmp_path, bundle):
+    bundle["baseline"]["aggregate"]["attribution_totals"][0]["active_linking_residual"] = 0.5e-10
+    bundle["stress"][0]["active_cumulative_return_pp"] += 0.5e-8
+    _save(tmp_path, bundle)
+    validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("net,drawdown", [(-100, -100), (0, 0), (150, 0)])
+def test_stress_valid_boundary_returns_and_drawdowns(tmp_path, bundle, net, drawdown):
+    row = bundle["stress"][0]
+    row.update(net_return_pct=net, window_max_drawdown_pct=drawdown,
+               active_cumulative_return_pp=net - row["benchmark_return_pct"])
+    _save(tmp_path, bundle)
+    validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("where", ["map", "scalar", "stress"])
+def test_finite_huge_json_integers_fail_closed_without_arithmetic_exception(tmp_path, bundle, where):
+    huge = 10 ** 308
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    if where == "map":
+        row["linked_asset_pnl"] = {"AA": huge, "BB": huge}
+        row["linked_cost_contribution"] = 0.0
+    elif where == "scalar":
+        row["portfolio_total_return"] = huge
+        row["benchmark_total_return"] = -huge
+        row["linked_asset_pnl"] = {"AA": huge, "BB": 0}
+        row["linked_benchmark_pnl"] = {"AA": -huge, "BB": 0}
+        row["linked_cost_contribution"] = 0.0
+    else:
+        bundle["stress"][0].update(net_return_pct=huge, benchmark_return_pct=huge,
+                                   active_cumulative_return_pp=-huge, window_max_drawdown_pct=0)
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="disagreement"):
         validate_release_bundle(tmp_path)
