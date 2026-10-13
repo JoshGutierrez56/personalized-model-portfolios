@@ -343,6 +343,19 @@ def validate_release_bundle(root: Path) -> dict:
     _require(all(isinstance(row, dict) for row in attribution), "attribution rows must be objects")
     _require(len(attribution) == len(paths) and {_path_pair(row, "attribution") for row in attribution} == paths, "attribution path count/coverage disagreement")
     _attribution(attribution, counts["assets"])
+    # Eliminate initial capital from cost/V0 and terminal_NAV/V0 - 1.
+    # This is a per-path identity, not proof of the configured capital scale.
+    for row in attribution:
+        pair = _path_pair(row, "attribution")
+        metric = metrics_by_path[pair]
+        nav = float(metric["terminal_nav"])
+        cost = float(metric["total_cost_dollars"])
+        growth = 1.0 + float(row["portfolio_total_return"])
+        _require(nav > 0 and growth > 0 and cost >= 0,
+                 f"attribution/reconstructed funded-path domain disagreement: {pair}")
+        residual = (cost / nav) * growth + float(row["linked_cost_contribution"])
+        _require(math.isfinite(residual) and abs(residual) <= RETURN_TOLERANCE,
+                 f"attribution/reconstructed cost-NAV disagreement: {pair}")
     stress = _sequence(loaded["stress"], "stress", nonempty=True)
     episodes = {}
     episode_windows = {}

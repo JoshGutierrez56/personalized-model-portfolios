@@ -55,7 +55,7 @@ def bundle():
     scenarios = []
     for client, method in pairs:
         row = {"client": client, "method": method, **{key: 0.0 for key in SCENARIO_NUMBERS}}
-        row.update(days=3, rebalance_count=1, terminal_nav=100.0)
+        row.update(days=3, rebalance_count=1, terminal_nav=100.0, total_cost_dollars=1.0)
         scenarios.append(row)
     baseline["aggregate"]["path_metrics"] = [
         {"client": row["client"], "method": row["method"],
@@ -457,4 +457,57 @@ def test_finite_huge_json_integers_fail_closed_without_arithmetic_exception(tmp_
                                    active_cumulative_return_pp=-huge, window_max_drawdown_pct=0)
     _save(tmp_path, bundle)
     with pytest.raises(ReleaseEvidenceError, match="disagreement"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("field,value", [("total_cost_dollars", 2.0), ("terminal_nav", 200.0)])
+def test_matching_scenario_and_reconstructed_values_must_match_linked_cost(tmp_path, bundle, field, value):
+    # Both tables and all hashes agree, but the unchanged linked cost contradicts them.
+    bundle["scenarios"][0][field] = value
+    bundle["baseline"]["aggregate"]["path_metrics"][0][field] = value
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="cost-NAV disagreement"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("field,value", [("total_cost_dollars", -1.0), ("terminal_nav", 0.0), ("terminal_nav", -100.0)])
+def test_cross_table_funded_path_domain(tmp_path, bundle, field, value):
+    bundle["scenarios"][0][field] = value
+    bundle["baseline"]["aggregate"]["path_metrics"][0][field] = value
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="funded-path domain"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("growth,cost,capital", [(1.1, 2.0, 100.0), (0.8, 0.0, 250.0), (1.0, 10.0, 1000.0)])
+def test_cross_table_identity_accepts_gains_losses_zero_cost_and_different_capital(tmp_path, bundle, growth, cost, capital):
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    total = growth - 1.0
+    linked_cost = -cost / capital
+    row.update(portfolio_total_return=total, active_total_return_difference=total - 0.03,
+               linked_cost_contribution=linked_cost)
+    row["linked_asset_pnl"] = {"AA": total - linked_cost, "BB": 0.0}
+    row["linked_active_asset_pnl"] = {"AA": total - linked_cost - 0.01, "BB": -0.02}
+    for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+        target.update(terminal_nav=capital * growth, total_cost_dollars=cost)
+    _save(tmp_path, bundle)
+    validate_release_bundle(tmp_path)
+
+
+def test_cross_table_cost_identity_accepts_fraction_roundoff(tmp_path, bundle):
+    for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+        target["total_cost_dollars"] += 0.5e-10 * 100
+    _save(tmp_path, bundle)
+    validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("total", [0.1, -1.0, -1.1])
+def test_coherent_attribution_change_cannot_bypass_cross_table_check(tmp_path, bundle, total):
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    row["portfolio_total_return"] += total
+    row["active_total_return_difference"] += total
+    row["linked_asset_pnl"]["AA"] += total
+    row["linked_active_asset_pnl"]["AA"] += total
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="attribution/reconstructed"):
         validate_release_bundle(tmp_path)
