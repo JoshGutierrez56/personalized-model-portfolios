@@ -1,0 +1,4 @@
+# Public receipts fingerprint these artifacts as exact bytes. Preserve their
+# original newlines across Windows/Linux clones instead of autocrlf conversion.
+outputs/oversight/*.json -text whitespace=cr-at-eol
+outputs/wrds/scenario_summary.csv -text whitespace=cr-at-eol

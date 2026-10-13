@@ -1,0 +1,6 @@
+# Minimal environment for the explicitly artificial, no-login oversight demo.
+# The empirical study/reporting environment is requirements.txt.
+numpy==2.2.6
+pandas==2.2.3
+scikit-learn==1.7.2
+duckdb==1.5.4

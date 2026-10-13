@@ -1,66 +1,145 @@
 {
-  "checked_utc": "2026-10-12T23:53:00.614009+00:00",
+  "checked_utc": "2026-10-13T04:02:05.745152+00:00",
   "status": "PASS",
   "tests": {
     "command": "python -m pytest -q -W error",
-    "passed": 71,
-    "failed": 0
+    "passed": 194,
+    "failed": 0,
+    "skipped": 0
   },
   "baseline_controls": 115,
-  "run_id": "oversight-20261012T234925",
+  "run_id": "oversight-20261013T034644",
   "fault_detection": "5/5",
   "pdf_qa": {
-    "Portfolio_Oversight_Memo": {
+    "Interview_Guide.pdf": {
+      "pages": 23,
+      "bookmarks": 92,
+      "out_of_bounds": [],
+      "replacement_glyph_pages": []
+    },
+    "Interview_Practice.pdf": {
+      "pages": 10,
+      "bookmarks": 21,
+      "out_of_bounds": [],
+      "replacement_glyph_pages": []
+    },
+    "Oversight_Methodology.pdf": {
+      "pages": 8,
+      "bookmarks": 15,
+      "out_of_bounds": [],
+      "replacement_glyph_pages": []
+    },
+    "Portfolio_Oversight_Memo.pdf": {
       "pages": 2,
       "bookmarks": 0,
-      "text_characters": 4749,
-      "out_of_bounds": [],
-      "replacement_glyph_pages": []
-    },
-    "Interview_Guide": {
-      "pages": 20,
-      "bookmarks": 89,
-      "text_characters": 57899,
-      "out_of_bounds": [],
-      "replacement_glyph_pages": []
-    },
-    "Oversight_Methodology": {
-      "pages": 7,
-      "bookmarks": 15,
-      "text_characters": 19951,
       "out_of_bounds": [],
       "replacement_glyph_pages": []
     }
   },
+  "workbook_qa": {
+    "sheets": 12,
+    "external_links": 0,
+    "control_units_complete": true
+  },
   "dashboard_qa": {
+    "checked_utc": "2026-10-13T04:00:20.371Z",
+    "url": "docs/index.html (local browser verification)",
     "results": [
       {
+        "name": "desktop",
         "width": 1440,
         "height": 900,
-        "overflow": false
+        "overflow": false,
+        "errors": [],
+        "axeViolations": 0,
+        "categoryCounts": {
+          "accounting": 37,
+          "risk": 12,
+          "data": 53,
+          "governance": 13
+        },
+        "stress": true,
+        "search": true,
+        "emptyState": true,
+        "keyboard": true,
+        "numericAlignment": true
       },
       {
+        "name": "tablet",
         "width": 1024,
         "height": 768,
-        "overflow": false
+        "overflow": false,
+        "errors": [],
+        "axeViolations": 0,
+        "categoryCounts": {
+          "accounting": 37,
+          "risk": 12,
+          "data": 53,
+          "governance": 13
+        },
+        "stress": true,
+        "search": true,
+        "emptyState": true,
+        "keyboard": true,
+        "numericAlignment": true
       },
       {
+        "name": "mobile",
         "width": 390,
         "height": 844,
-        "overflow": false
+        "overflow": false,
+        "errors": [],
+        "axeViolations": 0,
+        "categoryCounts": {
+          "accounting": 37,
+          "risk": 12,
+          "data": 53,
+          "governance": 13
+        },
+        "stress": true,
+        "search": true,
+        "emptyState": true,
+        "keyboard": true,
+        "numericAlignment": true
+      },
+      {
+        "name": "small-mobile",
+        "width": 320,
+        "height": 568,
+        "overflow": false,
+        "errors": [],
+        "axeViolations": 0,
+        "categoryCounts": {
+          "accounting": 37,
+          "risk": 12,
+          "data": 53,
+          "governance": 13
+        },
+        "stress": true,
+        "search": true,
+        "emptyState": true,
+        "keyboard": true,
+        "numericAlignment": true
       }
     ],
-    "errors": [],
-    "case_selection": true,
-    "scenario_selection": true,
-    "control_filter": "12 of 115 controls shown",
-    "keyboard_focus": true
+    "noJavaScriptFallback": true
   },
-  "public_data_scope": "Aggregate results only; licensed source and detailed security-day records excluded.",
+  "minimal_demo": {
+    "isolated_environment": true,
+    "no_write": true,
+    "pip_check": "No broken requirements found.",
+    "python": "3.10.11 (tags/v3.10.11:7d4cc5a, Apr  5 2023, 00:38:17) [MSC v.1929 64 bit (AMD64)]",
+    "faults": "5/5"
+  },
+  "public_data_scope": "Aggregate empirical results plus separately labeled artificial teaching inputs; licensed source and detailed security-day records excluded.",
+  "verification_scope": "Observed local Windows checks; consult GitHub Actions for the current commit CI result. Automated axe checks are not a complete accessibility certification.",
   "release_code_sha256": {
-    "run_oversight.py": "4a594962d3812fb1cf4f9299de917d0378e00b02b841151df6f955f81666b492",
-    "oversight_core.py": "50ffbe09e36b8eb369227aa2ef27e4fef7335a6aa5cc2e43b75e3066271ab747",
-    "build_oversight_reports.py": "e279edf7f96076456e15b263d81eb216fe6dd1b36b0573439e74f30e78e1dd59",
-    "build_oversight_dashboard.py": "9dbc3ca0d4ce10033ec6e9ab95f8a3310d0dccb97960e219f890746e7ed54b33"
+    "oversight_core.py": "1bae6943b0dc77e4085414a0e597d8781ae466f59f2fb2f9a7a9b3934e249236",
+    "run_oversight.py": "c379a54fc7304c8c87b01bb26e944e31a291bb8eaef952d23628bca9bda2a8cf",
+    "run_public_demo.py": "e4ee9664f7d80a2dd513342386a2c9360182fc95f2b0333c40a52886d5e89f82",
+    "release_evidence.py": "2d6d00f5c86b616361dfc4747f90359c92e5aa5f2f44eeb93f2702eb3f9bedf6",
+    "control_metadata.py": "5a46fff13c703bc2f0685e6ddce5f1978bd9187d036bbb0a4d96137ccd6483d2",
+    "build_oversight_reports.py": "3b39e21c13f553617b62446840f9feb3ff18a2fccc0b18a1a912d01c7c7d70d7",
+    "build_oversight_dashboard.py": "362982a774e22236562dceb16488a99e7601ed5b9a46f2385396348db34b8539"
   }
 }

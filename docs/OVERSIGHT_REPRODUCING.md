@@ -4,6 +4,20 @@ There are two distinct reproduction routes. Neither silently substitutes fabrica
 
 ## 1. Public, no-login verification
 
+For a quick, inspectable walkthrough of the validator itself:
+
+```bash
+python -m venv .venv
+# Windows PowerShell: .venv/Scripts/Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+python -m pip install -r requirements-demo.txt
+python run_public_demo.py --no-write
+```
+
+This route uses explicitly artificial, hand-derived two-sleeve inputs. It demonstrates accounting, deliberately broken inputs, and correction/retest without a WRDS account or the research notebook stack. It is **not a reproduction of the empirical investment results** and never overwrites the published research. Omit `--no-write` to save its separate teaching receipt under `outputs/public_demo/`.
+
+For the full automated test suite, use the broader research environment below.
+
 The repository includes the independent code, policy contract, versioned SQL, hand-derived test fixtures, aggregate research evidence, Excel workbook, decision memo and interview guide. It does not include the licensed security-day source or detailed simulation/trade ledgers.
 
 ```bash
@@ -13,7 +27,7 @@ python -m pip install -r requirements.txt
 python -m pytest -q -W error
 ```
 
-These tests require no WRDS login. Artificial inputs are labeled validation fixtures, not evidence of investment performance. CI runs this same test command on Linux with Python 3.11.
+These tests require no WRDS login. Artificial inputs are labeled validation fixtures, not evidence of investment performance. CI runs this same test command on Linux and Windows with Python 3.11, then runs the public walkthrough and rebuilds the dashboard from the hash-bound aggregate evidence.
 
 Read the saved receipts in `outputs/oversight/`:
 
@@ -22,6 +36,8 @@ Read the saved receipts in `outputs/oversight/`:
 - `run_receipt.json`: run identity, timestamps, input/challenger fingerprints and release status.
 - `historical_stress.json`: aggregate replay of two already-exposed historical periods.
 - `release_verification.json`: final local test/report/publishing verification, when present.
+
+`run_receipt.json` binds the baseline, incident, stress and scenario artifacts by exact SHA-256. Report/dashboard generation checks their agreement, statuses, domain-specific incident detection, corrected retests, and shared source fingerprints before rendering. `.gitattributes` preserves those artifact bytes across Windows/Linux clones. This detects accidental mixed or altered evidence; hashes are not an external attestation or a substitute for the licensed source.
 
 The dashboard embeds aggregate receipts and works without an API. Open `docs/index.html` locally, or use the published Pages link in the README. Selecting an injected case changes the fault explanation and failure evidence. Selecting an account changes the risk/cost comparison. This is a saved-evidence viewer, not a live market terminal.
 

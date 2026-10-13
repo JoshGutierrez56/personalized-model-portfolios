@@ -8,7 +8,7 @@ The portfolio implementation study below now has a separately implemented **Pyth
 
 **Start here:** [Interactive evidence dashboard](https://joshgutierrez56.github.io/personalized-model-portfolios/) · [Two-page decision memo](outputs/oversight/Portfolio_Oversight_Memo.pdf) · [Excel control workbook](outputs/oversight/Portfolio_Oversight.xlsx)
 
-**Understand and defend it:** [20-page interview guide · PDF](outputs/oversight/Interview_Guide.pdf) · [Editable guide · DOCX](outputs/oversight/Interview_Guide.docx) · [Technical methodology](docs/OVERSIGHT_METHODOLOGY.md)
+**Understand and defend it:** [Interview field guide · PDF](outputs/oversight/Interview_Guide.pdf) · [Editable guide · DOCX](outputs/oversight/Interview_Guide.docx) · [Technical methodology](docs/OVERSIGHT_METHODOLOGY.md)
 
 [![Portfolio oversight dashboard showing baseline PASS, five detected injected failures, thirty reconstructed paths and the investment decision.](docs/assets/oversight-preview.png)](https://joshgutierrez56.github.io/personalized-model-portfolios/)
 
@@ -18,13 +18,24 @@ The portfolio implementation study below now has a separately implemented **Pyth
 | **115 baseline controls passed** | Accounting, source/configuration provenance, chronology, risk windows, constraints and versioned SQL |
 | **5 / 5 deliberately injected faults blocked** | Wrong return definition, duplicate trade, look-ahead timestamp, prohibited allocation and fee error |
 | **Clean retest passed; original input hashes unchanged** | Mutations operate only on in-memory copies |
-| **71 tests passed with warnings treated as errors** | Original research, hand-derived challenger fixtures and independent adversarial cases |
+| **194 tests passed with warnings treated as errors** | Original research, hand-derived challenger fixtures and independent adversarial cases |
 
 This is **retrospective research validation**, not a production trading platform. Passing the technical gate releases evidence for review; it does not authorize an investment decision. The main investment conclusion remains: in the no-gold account, roughly 60% less turnover saved only about $110 annually per constant $1m at the assumed cost rate, while adding about 27bp of realized tracking risk.
 
+### Try the validator without a data subscription
+
+```bash
+python -m pip install -r requirements-demo.txt
+python run_public_demo.py --no-write
+```
+
+This small walkthrough uses **clearly artificial, hand-derived inputs**, not substitute market data. Follow an accounting reconciliation, observe named broken inputs get blocked, and inspect the corrected retest. The WRDS/CRSP investment evidence remains a separate research result.
+
+[60-minute rehearsal PDF](outputs/oversight/Interview_Practice.pdf) | [Editable rehearsal DOCX](outputs/oversight/Interview_Practice.docx) | [60-minute interview practice and answer key](docs/INTERVIEW_PRACTICE.md) · [Reproduction routes](docs/OVERSIGHT_REPRODUCING.md)
+
 ### Review or reproduce
 
-The dashboard, workbook, reports and aggregate receipts are public. Licensed source rows and detailed security-day ledgers are not distributed. Anyone can run the artificial validation fixtures without a WRDS login:
+The dashboard, workbook, reports and aggregate receipts are public. Licensed source rows and detailed security-day ledgers are not distributed. The public release guard also reconciles every displayed scenario metric to independently reconstructed accounting and risk results, checks artifact hashes, and rejects inconsistent incident evidence. Anyone can run the artificial validation fixtures without a WRDS login:
 
 ```bash
 python -m pip install -r requirements.txt

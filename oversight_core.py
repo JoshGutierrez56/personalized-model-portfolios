@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from itertools import product
+import tempfile
 from typing import Any
 
 import duckdb
@@ -100,6 +102,38 @@ def _production_text_sha(path):
 def _frame_hash(frame):
     # Fingerprints override bytes without exposing any rows in public results.
     return hashlib.sha256(frame.to_csv(index=False).encode("utf-8")).hexdigest()
+
+
+def _private_destination(root, directory):
+    """Resolve both directory and final file before retaining licensed details.
+
+    Checking only the parent directory misses a linked final CSV, or a private
+    root redirected through a directory symlink. Recheck immediately before the
+    atomic write as well; filesystem administrators remain a trust boundary.
+    """
+    declared = Path(root).resolve()/"outputs"/"oversight_private"
+    approved = declared.resolve()
+    candidate = Path(directory).resolve()
+    final = candidate/"reconstructed_ledger.csv"
+    contained = approved == declared and (candidate == approved or approved in candidate.parents)
+    # Existing links are not trusted destinations, even when presently internal.
+    return contained and not final.is_symlink() and final.resolve().parent == candidate, final
+
+
+def _write_private_ledger(destination, detail):
+    """Replace an artifact atomically rather than truncate through a hard link."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", newline="",
+                                         dir=destination.parent, prefix=".ledger-",
+                                         suffix=".tmp", delete=False) as handle:
+            temporary = Path(handle.name)
+            pd.DataFrame(detail).to_csv(handle, index=False)
+        os.replace(temporary, destination)
+    finally:
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
 
 
 def _bounds(client, tickers):
@@ -214,10 +248,14 @@ def _prepare(tables, contract, checks):
                      and tables["benchmark"].benchmark_nav.gt(0).all(), len(tables["daily"]))
     checks.condition("nonnegative_saved_fees", tables["trades"].cost_dollars.ge(0).all()
                      and tables["daily"].cost_dollars.ge(0).all(), len(tables["trades"]))
-    checks.condition("rebalance_flag_domain", tables["daily"].rebalance.isin(
-        [True, False, 0, 1, "True", "False", "true", "false", "1", "0"]).all(), len(tables["daily"]))
+    flags = tables["daily"].rebalance
+    checks.condition("rebalance_flag_domain", flags.isin(
+        [True, False, 0, 1, "True", "False", "true", "false", "1", "0"]).all(), len(flags))
     if checks.blocked:
         return None
+    # CSVs and override frames can mix supported booleans, binary numbers and
+    # strings. Normalize once only after the strict domain gate has passed.
+    tables["daily"]["rebalance"] = flags.isin([True, 1, "True", "true", "1"])
     panel = returns.pivot(index="date", columns="ticker", values="total_return").reindex(index=calendar, columns=tickers)
     return panel, evaluation, execution
 
@@ -329,11 +367,8 @@ def _reconstruct(tables, panel, evaluation, executions, contract, checks, retain
         held, previous = current*capital, capital
         asset_pnl, cost_total = np.zeros(len(tickers)), 0.0
         nav_series, net_series, gross_series, drift_series = [], [], [], []
+        cost_fraction_series, traded_fraction_series = [], []
         flags = daily.rebalance
-        if flags.dtype == object:
-            valid_flags = flags.isin(["True", "False", "true", "false", "1", "0"])
-            checks.condition("rebalance_flag_domain", valid_flags.all(), len(flags))
-            flags = flags.astype(str).str.lower().isin(["true", "1"])
         checks.condition("rebalance_schedule", np.array_equal(flags.to_numpy(dtype=bool), evaluation.isin(executions)), len(evaluation))
         for idx, (date, observed) in enumerate(zip(evaluation, returns)):
             prior = held.copy()
@@ -373,6 +408,8 @@ def _reconstruct(tables, panel, evaluation, executions, contract, checks, retain
             asset_pnl += gain
             cost_total += fee
             nav_series.append(nav); net_series.append(net); gross_series.append(gross); drift_series.append(drift)
+            cost_fraction_series.append(fee / before.sum())
+            traded_fraction_series.append(traded_fraction)
             if retain_detail:
                 details.append({"date": str(date.date()), "client": name, "method": method,
                     "prior_nav": previous, "reconstructed_nav": nav, "gross_return": gross,
@@ -417,10 +454,18 @@ def _reconstruct(tables, panel, evaluation, executions, contract, checks, retain
             "linked_benchmark_pnl": {t:float(v) for t,v in zip(tickers,linked_benchmark)},
             "linked_active_asset_pnl": {t:float(v) for t,v in zip(tickers,linked_active)},
             "linked_cost_contribution": float(linked_cost), "active_linking_residual": float(residual)})
+        years = len(navs) / contract["annualization"]
+        funded_curve = np.r_[capital, navs]
         path_metrics.append({"client": name, "method": method,
             "terminal_nav": float(navs[-1]), "total_cost_dollars": float(cost_total),
+            "net_cagr_pct": float(((navs[-1] / capital) ** (1 / years) - 1) * 100),
+            "net_volatility_pct": float(np.std(nets, ddof=1) * np.sqrt(contract["annualization"]) * 100) if len(navs)>1 else 0.0,
+            "max_drawdown_pct": float((funded_curve / np.maximum.accumulate(funded_curve) - 1).min() * 100),
+            "annual_one_way_turnover_pct": float(np.sum(traded_fraction_series) / 2 / years * 100),
+            "annual_incurred_cost_bps": float(np.sum(cost_fraction_series) / years * 10000),
             "gross_tracking_error": float(np.std(gross_returns-b_returns,ddof=1)*np.sqrt(contract["annualization"])) if len(navs)>1 else 0.0,
             "net_tracking_error": float(np.std(nets-b_returns,ddof=1)*np.sqrt(contract["annualization"])) if len(navs)>1 else 0.0,
+            "all_days_weight_limits_drifted": int(np.sum(np.array(drift_series)>tol["weights"])),
             "interim_drift_days": int(np.sum((np.array(drift_series)>tol["weights"]) & ~evaluation.isin(executions))),
             "maximum_interim_bound_drift": float(max(drift_series))})
     return {"attribution_totals": totals, "path_metrics": path_metrics,
@@ -452,16 +497,19 @@ def run_validation(root: Path, overrides: dict | None = None, output_private: Pa
         checks.condition("override_keys", not (set(overrides)-set(INPUT_FILES)-{"contract"}))
         if checks.blocked:
             return result()
-        contract = overrides.get("contract") or json.loads((root/"oversight_contract.json").read_text(encoding="utf-8"))
+        contract = overrides["contract"] if "contract" in overrides else json.loads((root/"oversight_contract.json").read_text(encoding="utf-8"))
+        checks.condition("contract_valid", isinstance(contract, dict) and bool(contract))
+        if checks.blocked:
+            # Keep public diagnostics well-formed for a malformed non-object override.
+            contract = {} if not isinstance(contract, dict) else contract
+            return result()
         provenance["contract_sha256"] = hashlib.sha256(json.dumps(contract,sort_keys=True).encode()).hexdigest()
         checks.condition("contract_valid", _contract_valid(contract))
         if checks.blocked:
             return result()
         if output_private is not None:
-            approved_private = (root/"outputs/oversight_private").resolve()
-            proposed_private = Path(output_private).resolve()
-            checks.condition("private_output_boundary", proposed_private == approved_private
-                             or approved_private in proposed_private.parents,
+            private_valid, _ = _private_destination(root, output_private)
+            checks.condition("private_output_boundary", private_valid,
                              detail="Detailed reconstructed holdings and returns may only be written under outputs/oversight_private.")
             if checks.blocked:
                 return result()
@@ -512,14 +560,19 @@ def run_validation(root: Path, overrides: dict | None = None, output_private: Pa
         aggregate.update({"paths":len(contract["clients"])*len(contract["methods"]),
                           "evaluation_dates":len(evaluation), "execution_dates":len(execution),
                           "source_dates":len(panel), "assets":len(contract["tickers"])})
-        _risk_controls(tables, panel, execution, contract, checks)
-        _sql_controls(root, tables, contract, checks)
-        calculated, detail = _reconstruct(tables, panel, evaluation, execution, contract, checks, output_private is not None)
+        # Finite input cells can still overflow during compounding/covariance.
+        # Stop before publishing non-finite aggregates or emitting raw warnings.
+        with np.errstate(over="raise", invalid="raise", divide="raise"):
+            _risk_controls(tables, panel, execution, contract, checks)
+            _sql_controls(root, tables, contract, checks)
+            calculated, detail = _reconstruct(tables, panel, evaluation, execution, contract, checks, output_private is not None)
         aggregate.update(calculated)
         if output_private is not None:
-            destination = Path(output_private)
-            destination.mkdir(parents=True, exist_ok=True)
-            pd.DataFrame(detail).to_csv(destination/"reconstructed_ledger.csv", index=False)
+            private_valid, destination = _private_destination(root, output_private)
+            checks.condition("private_output_boundary", private_valid)
+            if not private_valid:
+                return result()
+            _write_private_ledger(destination, detail)
             provenance["private_ledger_written"] = True
             provenance["private_ledger_rows"] = len(detail)
     except Exception as exc:

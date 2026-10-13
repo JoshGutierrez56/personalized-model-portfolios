@@ -59,7 +59,7 @@ def run(root: Path = ROOT):
     started = datetime.now(timezone.utc).isoformat()
     timer = time.perf_counter()
     paths = [root / p for p in ["data/wrds/daily.csv", "data/wrds/calendar.csv", "data/wrds/identities.csv",
-        "data/wrds/manifest.json", "outputs/wrds_private/daily.csv", "outputs/wrds_private/trades.csv",
+        "data/wrds/manifest.json", "outputs/wrds/scenario_summary.csv", "outputs/wrds_private/daily.csv", "outputs/wrds_private/trades.csv",
         "outputs/wrds_private/decisions.csv", "outputs/wrds_private/benchmark.csv", "outputs/wrds/run_summary.json"]]
     before = {str(p.relative_to(root)).replace("\\", "/"): sha256(p) for p in paths}
     print("Running independent baseline reconciliation", flush=True)
@@ -148,6 +148,14 @@ def run(root: Path = ROOT):
         "detected_cases": sum(c["detected"] for c in cases), "corrected_retest_status": repaired["status"],
         "original_inputs_unchanged": unchanged, "input_sha256": before,
         "challenger_code_sha256": {str(p.relative_to(root)).replace("\\", "/"): sha256(p) for p in files},
+        "public_artifact_sha256": {
+            path: sha256(root / path) for path in [
+                "outputs/oversight/validation_summary.json",
+                "outputs/oversight/incident_summary.json",
+                "outputs/oversight/historical_stress.json",
+                "outputs/wrds/scenario_summary.csv",
+            ]
+        },
         "status": "PASS" if all(c["closure"] == "CLOSED_TEST_CASE" for c in cases) else "BLOCK",
         "interpretation": "Technical evidence-release decision only. Not investment approval, an actual order gate, or a claim of future alpha.",
         "source": "Existing WRDS/CRSP current-vintage historical research; no fresh market-data retrieval.",

@@ -76,6 +76,8 @@ The checker verifies covariance finiteness/positive semidefiniteness, full inves
 
 Risk-model validation is separate from future forecast accuracy. A correctly calculated ex-ante risk estimate can differ materially from subsequently realized risk.
 
+The ex-ante reference is the fixed policy vector at the proposal. The realized tracking-error statistic instead uses earned account returns minus the independently reconstructed, monthly rebalanced and otherwise drifting benchmark returns. The evolving holdings, forecast uncertainty, legacy first-day transition, and repeated decisions mean these are different estimands. The allowance on one proposal is not a bound on the full-history realized TE difference between two implementation methods. The current checker reconciles each definition; it does not claim a formal risk-forecast calibration test.
+
 ## 6. Independent holdings and funded-cost reconstruction
 
 The account state is total-return sleeve dollars. It is not a share, settlement, cash, or tax-lot ledger. Let `h_prev` be opening sleeve values, `r` source total returns, `trade` saved signed trade notionals, and `c` the specified per-dollar trading-cost rate.
@@ -229,3 +231,5 @@ A passing receipt means the stated controls passed for identified artifacts. It 
 The research uses a current-vintage extract and a fixed retrospectively selected universe. Lagged chronology does not eliminate database revisions, universe-selection concerns, or the fact that the history has already been examined. ETF total-return sleeves omit live shares, tax lots, external cash flows, real order handling, market impact, settlement, and household restrictions. The cost rate is modeled rather than observed.
 
 The useful result is a transparent, reproducible separation of **investment trade-offs**, **accounting/control evidence**, and **operational exceptions**. Keeping those categories distinct is the core oversight discipline.
+
+For worked calculations and source-level exercises covering these distinctions, see the [question-first interview rehearsal](INTERVIEW_PRACTICE.md). Its invented two-asset figures are teaching fixtures, not additional empirical portfolio results.

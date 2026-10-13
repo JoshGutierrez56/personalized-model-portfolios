@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "classification": "ARTIFICIAL TEACHING INPUTS — NOT MARKET DATA OR INVESTMENT EVIDENCE",
+  "description": "Two invented sleeves, AA and BB. Sparse dates are an artificial calendar, not a real trading calendar. All NAVs and trades below were hand-derived; no production optimizer or market-data service is used.",
+  "common_contract": {
+    "tickers": ["AA", "BB"],
+    "target": [0.5, 0.5],
+    "current": [0.6, 0.4],
+    "annualization": 252,
+    "methods": ["Minimum risk"],
+    "clients": [{"name": "Teaching fixture", "blocked": [], "floors": {}, "caps": {}}],
+    "tolerances": {"dollars": 1e-8, "returns": 1e-10, "weights": 2e-6, "risk": 2e-6, "risk_reconciliation": 1e-10},
+    "production_sha256": {},
+    "require_source_provenance": false,
+    "limitations": [
+      "Entirely artificial two-sleeve arithmetic fixture, not historical returns or investment evidence.",
+      "The legacy method label Minimum risk identifies a fixed 50/50 proposal; no optimizer is run and optimality is not certified.",
+      "Sample covariance and a two-observation lookback make the arithmetic inspectable, not suitable for estimating real risk."
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "zero_cost_wealth",
+      "title": "Four-close wealth linking with drift and a second rebalance",
+      "derivation": "Start at 60/40. First sleeve gains 6: 66+40=106; rebalance to 53/53. Next close: 53+63.6=116.6. Next close: 47.7+63.6=111.3; rebalance to 55.65/55.65. Last close: 55.65+61.215=116.865. Asset gains are 0.7 and 16.165. The 50/50 benchmark ends at 115.7625.",
+      "dates": ["2020-12-30", "2020-12-31", "2021-01-04", "2021-01-05", "2021-02-01", "2021-02-02"],
+      "returns_by_date": [[0, 0], [0, 0], [0.1, 0], [0, 0.2], [-0.1, 0], [0, 0.1]],
+      "cost_bps": 0,
+      "evaluation_nav": [106, 116.6, 111.3, 116.865],
+      "benchmark_nav": [105, 115.5, 110.25, 115.7625],
+      "gross_return_numerators": [6, 10.6, -5.3, 5.565],
+      "cost_dollars": [0, 0, 0, 0],
+      "execution_offsets": [0, 2],
+      "pretrade_dollars": [[66, 40], [47.7, 63.6]],
+      "posttrade_dollars": [[53, 53], [55.65, 55.65]],
+      "trade_dollars": [[-13, 13], [7.95, -7.95]],
+      "trade_cost_dollars": [[0, 0], [0, 0]],
+      "expected": {
+        "terminal_nav": 116.865,
+        "portfolio_total_return": 0.16865,
+        "benchmark_total_return": 0.157625,
+        "active_total_return_difference": 0.011025,
+        "total_cost_dollars": 0,
+        "linked_asset_pnl": {"AA": 0.007, "BB": 0.16165}
+      }
+    },
+    {
+      "id": "funded_fee",
+      "title": "A 100-basis-point fee funded by the portfolio, not external cash",
+      "derivation": "Start at 60/40 with flat returns. Sell 10.1 and buy 9.9; gross traded notional is 20. Fee=20*0.01=0.2. Final holdings are 49.9/49.9, NAV=99.8 and net return=-0.002. Signed trades=-0.2 fund the fee exactly.",
+      "dates": ["2020-12-30", "2020-12-31", "2021-01-04"],
+      "returns_by_date": [[0, 0], [0, 0], [0, 0]],
+      "cost_bps": 100,
+      "evaluation_nav": [99.8],
+      "benchmark_nav": [100],
+      "gross_return_numerators": [0],
+      "cost_dollars": [0.2],
+      "execution_offsets": [0],
+      "pretrade_dollars": [[60, 40]],
+      "posttrade_dollars": [[49.9, 49.9]],
+      "trade_dollars": [[-10.1, 9.9]],
+      "trade_cost_dollars": [[0.101, 0.099]],
+      "expected": {
+        "terminal_nav": 99.8,
+        "portfolio_total_return": -0.002,
+        "benchmark_total_return": 0,
+        "active_total_return_difference": -0.002,
+        "total_cost_dollars": 0.2,
+        "linked_asset_pnl": {"AA": 0, "BB": 0}
+      }
+    }
+  ]
+}

@@ -3,6 +3,8 @@
 The small artificial calendar is explicitly a unit-test fixture, not market evidence.
 """
 import copy
+import json
+import os
 import warnings
 from pathlib import Path
 
@@ -105,6 +107,14 @@ def test_hand_calculated_costs_funded_without_external_cash(tmp_path):
     assert row["portfolio_total_return"] == pytest.approx(-.002)
     assert row["linked_cost_contribution"] == pytest.approx(-.002)
     assert result["aggregate"]["path_metrics"][0]["terminal_nav"] == pytest.approx(99.8)
+    metrics = result["aggregate"]["path_metrics"][0]
+    # One observed day: 20 dollars absolute turnover / 100 pretrade NAV;
+    # one-way divides by two, and annualization multiplies by 252.
+    assert metrics["annual_one_way_turnover_pct"] == pytest.approx(2520.0)
+    assert metrics["annual_incurred_cost_bps"] == pytest.approx(5040.0)
+    # The initial capital must be included: a first-day loss is a drawdown.
+    assert metrics["max_drawdown_pct"] == pytest.approx(-.2)
+    assert metrics["net_cagr_pct"] == pytest.approx((.998**252 - 1) * 100)
 
 
 @pytest.mark.parametrize("table", ["returns","daily","decisions","trades","benchmark","calendar"])
@@ -245,3 +255,73 @@ def test_malformed_dates_fail_without_inference_warning_or_value_leak(tmp_path):
     assert "validator_execution" in result["blockers"]
     assert not caught
     assert "PRIVATE_MALFORMED_DATE" not in str(result)
+
+
+@pytest.mark.parametrize("bad_contract", [{}, None, [], False, 0])
+def test_explicit_empty_contract_does_not_silently_load_disk_contract(tmp_path, bad_contract):
+    case = synthetic_case()
+    (tmp_path/"oversight_contract.json").write_text(json.dumps(case["contract"]), encoding="utf-8")
+    case["contract"] = bad_contract
+    result = check_fixture(tmp_path, case)
+    assert result["status"] == "BLOCK"
+    assert "contract_valid" in result["blockers"]
+    assert "validator_execution" not in result["blockers"]
+
+
+def test_mixed_supported_rebalance_flag_representations_are_normalized(tmp_path):
+    case = synthetic_case()
+    case["daily"]["rebalance"] = pd.Series([True, "false", "1", 0], dtype=object)
+    result = check_fixture(tmp_path, case)
+    assert result["status"] == "PASS", result["blockers"]
+    assert case["daily"]["rebalance"].tolist() == [True, "false", "1", 0]
+
+
+@pytest.mark.parametrize("link_kind", ["file", "private_root", "ancestor"])
+def test_private_ledger_cannot_follow_symlinks_into_public_tree(tmp_path, link_kind):
+    public = tmp_path/"public"
+    public.mkdir()
+    exposed = public/"reconstructed_ledger.csv"
+    exposed.write_text("PUBLIC_SENTINEL", encoding="utf-8")
+    private = tmp_path/"outputs/oversight_private"
+    try:
+        if link_kind == "file":
+            private.mkdir(parents=True)
+            (private/"reconstructed_ledger.csv").symlink_to(exposed)
+        elif link_kind == "private_root":
+            private.parent.mkdir()
+            private.symlink_to(public, target_is_directory=True)
+        else:
+            (tmp_path/"outputs").symlink_to(public, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip("Host does not permit creating symlinks: "+str(exc.errno))
+    result = run_validation(tmp_path, synthetic_case(), private)
+    assert "private_output_boundary" in result["blockers"]
+    assert exposed.read_text(encoding="utf-8") == "PUBLIC_SENTINEL"
+    assert "private_ledger_written" not in result["provenance"]
+
+
+def test_existing_hard_link_is_replaced_without_overwriting_public_file(tmp_path):
+    public = tmp_path/"public.csv"
+    public.write_text("PUBLIC_SENTINEL", encoding="utf-8")
+    private = tmp_path/"outputs/oversight_private"
+    private.mkdir(parents=True)
+    destination = private/"reconstructed_ledger.csv"
+    os.link(public, destination)
+    result = run_validation(tmp_path, synthetic_case(), private)
+    assert result["status"] == "PASS", result["blockers"]
+    assert public.read_text(encoding="utf-8") == "PUBLIC_SENTINEL"
+    assert len(pd.read_csv(destination)) == 4
+    assert not list(private.glob(".ledger-*.tmp"))
+
+
+def test_finite_but_overflowing_returns_fail_without_nonfinite_aggregates(tmp_path):
+    case = synthetic_case()
+    case["returns"].loc[case["returns"].date.eq("2021-01-04"), "total_return"] = 1e308
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = check_fixture(tmp_path, case)
+    assert result["status"] == "BLOCK"
+    assert "validator_execution" in result["blockers"]
+    assert result["provenance"]["error_type"] in {"FloatingPointError", "ValueError"}
+    assert not caught
+    json.dumps(result, allow_nan=False)

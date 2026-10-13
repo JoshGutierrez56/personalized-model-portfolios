@@ -10,7 +10,11 @@ permissions:
 
 jobs:
   independent-fixtures:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,3 +25,9 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Run hand-derived and adversarial tests without licensed data
         run: python -m pytest -q -W error
+      - name: Run the clearly artificial public walkthrough
+        run: python run_public_demo.py --no-write
+      - name: Check public evidence consistency and rebuild the dashboard
+        run: python build_oversight_dashboard.py
+      - name: Verify the committed dashboard matches its evidence
+        run: git diff --exit-code -- docs/index.html

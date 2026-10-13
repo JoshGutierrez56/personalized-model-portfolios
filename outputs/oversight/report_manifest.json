@@ -1,5 +1,5 @@
 {
-  "created_utc": "2026-10-12T23:52:30.115337+00:00",
+  "created_utc": "2026-10-13T03:59:28.067440+00:00",
   "workbook": {
     "path": "Portfolio_Oversight.xlsx",
     "sheets": [
@@ -22,37 +22,56 @@
   "Interview_Guide": {
     "pdf": "Interview_Guide.pdf",
     "docx": "Interview_Guide.docx",
-    "source_sha256": "40266dfbd0a56179c0762e6bb65fd09b8b3f00979592724f62eefd9d9b0c00a1"
+    "source_sha256": "13dd3f25d0f64df50cd96cc2fcefd8752773976f45ea5ae7d0c5fb22c137357c"
   },
   "Oversight_Methodology": {
     "pdf": "Oversight_Methodology.pdf",
     "docx": "Oversight_Methodology.docx",
-    "source_sha256": "b079e833cd3618ae7006c3e5adb7c97383350fa7731ab2561d8fc9012d0128a6"
+    "source_sha256": "c3c52ab5d402cb10ebadc5f6f9bce3f0c8357d480133a3f475828d146857ada7"
+  },
+  "Interview_Practice": {
+    "pdf": "Interview_Practice.pdf",
+    "docx": "Interview_Practice.docx",
+    "source_sha256": "c991eb329855e4f3e58082656d948fa73046cb854bf0745ed7d4ef90a79c9a58"
+  },
+  "fonts": {
+    "pdf_body": "DejaVu Sans",
+    "pdf_code": "DejaVu Sans Mono",
+    "pdf_fonts_embedded": true,
+    "docx_note": "Word files request these families but do not embed fonts; the reader may substitute available fonts."
   },
   "files": {
     "Interview_Guide.docx": {
-      "bytes": 59887,
-      "sha256": "aed0ccffbb08a288c96a78780e87b40cc5ff435566df6be2f27053529402bb3c"
+      "bytes": 64618,
+      "sha256": "aaafb342deaf8cf24aa611b33f3ba5185874fb29b6f98326fb11e9e03fb98a04"
     },
     "Interview_Guide.pdf": {
-      "bytes": 169756,
-      "sha256": "eb36ce93e0ba7ea9bc8b734278bfcaf2822a1d883abd4b78706504be2cc1b1fc"
+      "bytes": 142933,
+      "sha256": "ce8b51f07c3ecbdcac8f49594627f8ca07331a81544bd333835d3adfe44ddd36"
+    },
+    "Interview_Practice.docx": {
+      "bytes": 51648,
+      "sha256": "66c6310935bde20d525fa897e6a7ec83b9e53f5bbfa882f073eb0921e0b53597"
+    },
+    "Interview_Practice.pdf": {
+      "bytes": 96705,
+      "sha256": "9be7cf388a18aeb4c7e841cbab844516c99fd7440abca44e2320b2806438e0a5"
     },
     "Oversight_Methodology.docx": {
-      "bytes": 45158,
-      "sha256": "3f10959a56b333e79c96cd404938599c6f6b4588b36c6cf447e0d7b578b70aa3"
+      "bytes": 47614,
+      "sha256": "f1c42939e31f9f85e4e14a0c9b6013c63d10ed3db1d1f47ece2af6d27720fe0b"
     },
     "Oversight_Methodology.pdf": {
-      "bytes": 118475,
-      "sha256": "ffd37cdfb94e23c84c13cc9f3aa1a1650e397bfaed40c3d13b48b5992cf233ff"
+      "bytes": 87482,
+      "sha256": "f27e11f26dfb3280bfb872dba643c0709a9747df5e1066f3ec32923ce8e98480"
     },
     "Portfolio_Oversight.xlsx": {
-      "bytes": 49572,
-      "sha256": "f56b93c2b6ba884749e5b94292c4623c692737fb25ad9424a009efc534a5d497"
+      "bytes": 53683,
+      "sha256": "d2f5e82011cdf2ad45a49da10ad4e6b92c057735df60696b04223b27c071f1b4"
     },
     "Portfolio_Oversight_Memo.pdf": {
-      "bytes": 77780,
-      "sha256": "f6a3d6ea8663ace2b413b1ecc1c559db159c3752c508f9810105be1ff29ee798"
+      "bytes": 47747,
+      "sha256": "90387fc12dc7adf8a49f1be2e4e4d4e81ac10315d67e5ba9b1bb634e703ffa7f"
     }
   }
 }

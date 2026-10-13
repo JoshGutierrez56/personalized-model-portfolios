@@ -31,6 +31,8 @@ This project provides direct discussion material for the analytical and control 
 
 Study this guide alongside the repository. Before an interview, personally run the available tests, inspect a reconciliation, and explain one deliberately broken example. Familiarity with an AI-assisted artifact is not the same as demonstrated technical ownership.
 
+For an active assessment rather than another reading pass, use the [60-minute interview rehearsal](INTERVIEW_PRACTICE.md). Its questions precede the answer key; it combines hand calculations, actual code navigation, an incident decision, and a scored rubric. Complete it without the answer key before describing yourself as fluent in the implementation.
+
 ## 2. Business context: why 55ip should care
 
 A model portfolio expresses desired exposures. An actual account can differ because of restricted securities, minimum retained positions, concentration limits, implementation timing, costs, or other client circumstances. At scale, the problem is not merely finding one mathematically feasible allocation. It is producing a repeatable process for many accounts, knowing when an exception is economically sensible, and detecting when an apparent investment result is actually an operational defect.
@@ -284,6 +286,12 @@ TE measures variability around mean active return. A constant daily underperform
 
 The usual square-root annualization assumes a conventional daily scaling. It is not a forecast interval or a proof that serial correlation is absent. The study also uses paired circular block resampling to describe uncertainty in one TE difference conditional on the sample.
 
+### Compare like with like: proposed risk versus realized benchmark risk
+
+The ex-ante calculation compares a **proposed allocation with fixed policy weights** using the lagged covariance. The realized calculation compares a **time series of earned account returns with an actually drifting monthly benchmark**. Execution-close weights, interim drift, changing covariance estimates, the legacy first-day allocation, and realized future returns all affect the relationship. They are not the same object measured twice. A 25-bp allowance at proposal time is therefore not a promise that the two full-history realized TE estimates will differ by no more than 25 bp.
+
+If a PM asks why realized TE rose, first reconcile the accounting and benchmark. Then separate forecast error, changing exposures, and implementation effects before proposing a new risk model. The saved study compares these quantities; it does not implement a formal out-of-sample calibration test of predicted versus realized TE.
+
 ### The lower-turnover optimization
 
 It minimizes the L1 distance between proposed weights and signal-date weights subject to the same restrictions and a risk budget:
@@ -392,6 +400,8 @@ Across all nine constrained scenarios, minimum tracking risk reduced realized gr
 
 The roughly 60.26% turnover reduction comes with **26.99 bp** more realized tracking risk. The annual cost-rate difference is approximately **1.10 bp**, or **$110 per year on a constant $1 million NAV**. That is a scale illustration, not an exact annual invoice or CAGR benefit. Actual cost dollars depend on the evolving simulated account.
 
+The reported annualized cost rate is the sum of individual cost/pretrade-NAV fractions divided by the study's year convention, `evaluation_sessions / 252`. It is not total dollar costs divided by initial wealth and elapsed years. That distinction explains why multiplying the illustrative $110 by twelve does not reproduce the difference between the two total-expense figures. Do not conflate an annualized fraction, an actual dollar sum, and a change in compound annual return.
+
 The paired 21-day circular block bootstrap gives an approximately **20.0–35.6 bp** interval for the TE increment at the stated 95% level and 1,000 resamples. The procedure preserves contemporaneous pairing between methods and some temporal dependence. It does not represent all possible regimes, model choices, or future market histories.
 
 Increasing the risk allowance to 50 bp approximately doubled the realized extra TE to 54 bp while increasing modeled annual savings only to roughly $115 per $1 million. This makes diminishing cost savings visible. A higher assumed per-trade cost changes the economics, but it is another modeled assumption, not observed market impact.
@@ -425,6 +435,20 @@ Do not turn that into “always choose minimum risk.” The client may value non
 **Third, add tax-aware implementation as a separate module.** Introduce an explicit lot ledger, realistic tax policy, household restrictions, and independent tax/accounting tests. Define whether the objective concerns after-tax wealth, realized-gain budgets, tracking risk, or a combination. Do not attach a “tax aware” label to a turnover penalty.
 
 **Fourth, integrate operationally only with governance.** Approval rights, exceptions, audit retention, deployment controls, execution systems, capacity, security, and qualified review are separate deliverables. A correct research notebook is a useful input—not the production system itself.
+
+### Role-specific extension: from ETF weights to factor, sector, and country risk
+
+The posting asks about factor/sector/country/style exposures. This project currently reconciles **ETF sleeve weights and return-covariance risk**, not a vendor factor model or historical constituent look-through. A US-listed ETF is not automatically a US-only economic exposure, and assigning one sector label to a broad equity ETF would be misleading.
+
+A credible extension would obtain effective-dated holdings or factor loadings, align their availability to each signal date, and document coverage and stale/missing exposures. With security-by-factor exposures `B`, factor covariance `F`, specific covariance `D`, and active security weights `a`, a conventional model decomposes active variance as `a' B F B' a + a' D a`. Specific risk cannot be omitted merely because factor exposures reconcile. Country and sector mappings also need explicit classification rules and an unknown bucket rather than silently redistributing missing coverage.
+
+The acceptance criterion is not an attractive exposure chart. Require point-in-time availability, reconciled holdings coverage, units and currency conventions, factor-plus-specific variance reconciliation to total modeled variance, and a controlled response when coverage is inadequate. Present this as a design proposal unless you have actually implemented and tested it; do not imply Bloomberg, FactSet, or Barra integration exists here.
+
+### Role-specific extension: a change ticket a PM could review
+
+For a hypothetical proposal to shorten the risk lookback from 756 to 252 sessions, record: **question**—does faster adaptation justify increased estimate noise; **scope**—same universe, clock, restrictions and cost model; **evidence**—paired exposure, TE, turnover, feasibility and regime comparisons; **acceptance**—accounting stays reconciled, no chronology breach, changes are explained rather than selected solely for higher returns; **decision owner**—a designated PM/research reviewer; and **rollback**—retain the previous configuration and its immutable outputs.
+
+This is a proposed work item suitable for a JIRA-style workflow, not a claim that this repository is integrated with JIRA or that a committee approved a model change. The hypothesis and acceptance criteria should be written before inspecting a new genuinely prospective period. Previously inspected history remains development evidence even when rerun under a new ticket.
 
 ## 13. Ownership, AI assistance, and interview honesty
 
@@ -523,7 +547,7 @@ Project-based answer: “The lower-turnover method looked compelling on a relati
 
 ### “How would you handle disagreement with a portfolio manager?”
 
-“Separate factual reconciliation from investment judgment. A accounting identity must reconcile; an investment preference can be debated. Present the exposure and cost trade-off, acknowledge omitted benefits, document the decision owner, and escalate only the actual unresolved policy or control issue.” Use an actual prior-work example if asked for a past event.
+“Separate factual reconciliation from investment judgment. An accounting identity must reconcile; an investment preference can be debated. Present the exposure and cost trade-off, acknowledge omitted benefits, document the decision owner, and escalate only the actual unresolved policy or control issue.” Use an actual prior-work example if asked for a past event.
 
 ### “How do you balance speed and rigor?”
 
@@ -644,6 +668,7 @@ The goal is not to sound certain about everything. It is to be precise about wha
 - [Project overview](../README.md): entry point and public artifact links.
 - [Research methodology](METHODOLOGY.md): original optimization, timing, and funding specification.
 - [Oversight methodology](OVERSIGHT_METHODOLOGY.md): independent checks, SQL, attribution, and incident semantics.
+- [60-minute rehearsal and answer key](INTERVIEW_PRACTICE.md): question-first calculations, exact code-navigation tasks, incident communication, and scoring.
 - [Data contract](DATA.md): CIZ fields, historical identities, coverage, vintage, and licensing.
 - [Research results](RESULTS.md): exact aggregate comparisons and interpretation.
 - [Reproduction guide](REPRODUCING.md): environment, commands, entitlement, and known historical receipts.

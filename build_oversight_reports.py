@@ -7,6 +7,7 @@ import html
 import json
 from pathlib import Path
 import re
+from urllib.parse import quote
 
 import pandas as pd
 from openpyxl import Workbook, load_workbook
@@ -14,7 +15,7 @@ from openpyxl.chart import BarChart, Reference
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.enums import TA_LEFT, TA_RIGHT
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
@@ -23,6 +24,12 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
+
+from control_metadata import describe_control
+from release_evidence import validate_release_bundle
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "outputs/oversight"
@@ -90,8 +97,9 @@ def tab(wb, name, rows, title, subtitle):
 
 
 def workbook():
-    baseline, incidents, receipt = read("validation_summary.json"), read("incident_summary.json"), read("run_receipt.json")
-    scenarios = pd.read_csv(ROOT / "outputs/wrds/scenario_summary.csv")
+    bundle = validate_release_bundle(ROOT)
+    baseline, incidents, receipt = bundle["baseline"], bundle["incidents"], bundle["receipt"]
+    scenarios = pd.DataFrame(bundle["scenarios"])
     wb = Workbook(); wb.remove(wb.active)
     wb.properties.creator = "Josh Gutierrez"
     wb.properties.title = "Portfolio Validation & Investment Oversight"
@@ -103,7 +111,8 @@ def workbook():
         {"item": "Investment conclusion", "value": "Do not spend tracking-risk budget solely to save tiny ETF costs", "interpretation": "For No gold, 1.10bp/year modeled savings accompanies about 27bp more realized TE."},
         {"item": "Reproducibility", "value": receipt["run_id"], "interpretation": "See RunEvidence; full empirical rerun requires own licensed inputs."}]
     tab(wb, "Decision", overview, "Portfolio oversight | decision brief", "Actual WRDS-backed aggregate research. Hypothetical accounts. Already-exposed 2014–2025 history.")
-    tab(wb, "Controls", baseline.get("checks", []), "Independent control results", "PASS is technical consistency. A passing control is not proof the investment decision is optimal.")
+    controls = [{**check, **describe_control(check["id"])} for check in baseline.get("checks", [])]
+    tab(wb, "Controls", controls, "Independent control results", "Residual and tolerance share the explicit unit column. PASS is technical consistency, not investment approval.")
     cases = [{"id": c["id"], "case": c["title"], "classification": c["classification"], "observed": c["observed_status"],
         "retest": c["corrected_retest"], "closure": c["closure"], "root_cause": c["root_cause"],
         "corrective_action": c["corrective_action"], "suggested_owner": c["suggested_operational_owner"],
@@ -120,13 +129,13 @@ def workbook():
         {"metric": "Annualized cost (bp NAV)", "minimum_risk": a.annual_incurred_cost_bps, "lower_turnover": b.annual_incurred_cost_bps},
         {"metric": "Annual cost per constant $1m (USD)", "minimum_risk": a.annual_incurred_cost_bps * 100, "lower_turnover": b.annual_incurred_cost_bps * 100}],
         "Would I authorize the lower-turnover choice?", "Conditional choice, not automatic approval: inspect mandate, cost assumptions and the price of tracking risk.")
-    tab(wb, "Stress", read("historical_stress.json"), "Historical episode replay", "Preselected familiar periods within already-exposed history. Returns exclude start-close date, include end-close date.")
+    tab(wb, "Stress", bundle["stress"], "Historical episode replay", "Preselected familiar periods within already-exposed history. Returns exclude start-close date, include end-close date.")
     agg = baseline.get("aggregate", {})
     tab(wb, "Reconciliation", [{"metric": k, "value": flat(v)} for k, v in agg.items() if k not in {"attribution_totals", "path_metrics"}],
         "Reconciliation | aggregate residuals", "Detailed security-day ledgers are intentionally excluded from this public workbook.")
     attr = agg.get("attribution_totals", [])
     if agg.get("path_metrics"):
-        tab(wb, "PathMetrics", agg["path_metrics"], "Reconstructed path metrics", "One aggregate row per account/method, not security-day data. Tracking error is an annual decimal; 0.01 = 1%.")
+        tab(wb, "PathMetrics", agg["path_metrics"], "Reconstructed path metrics", "One aggregate row per account/method. *_pct fields are percentages; *_bps are basis points. Tracking errors and bound drift are fractions; 0.01 = 1%. NAV/cost totals are USD.")
     if isinstance(attr, list) and attr and isinstance(attr[0], dict):
         totals = [{k: v for k, v in row.items() if not isinstance(v, dict)} for row in attr]
         tab(wb, "LinkedTotals", totals, "Cumulative contribution reconciliation", "Initial-capital-scaled dollar P&L, in decimals. 0.01 = 1 percentage point of cumulative return.")
@@ -167,22 +176,41 @@ def workbook():
     return {"path": path.name, "sheets": check.sheetnames, "formula_note": "Open in Excel/LibreOffice to recalculate teaching formulas; research figures are materialized values."}
 
 
+def _font_files():
+    """Choose complete Unicode families, never silently fall back to base-14 PDF fonts.
+
+    Matplotlib is an existing pinned dependency and distributes free DejaVu fonts.
+    Those are the portable default; no network/font installation occurs here.
+    """
+    try:
+        from matplotlib import get_data_path
+        dejavu = Path(get_data_path()) / "fonts/ttf"
+        portable_files = [dejavu / name for name in
+                          ("DejaVuSans.ttf", "DejaVuSans-Bold.ttf", "DejaVuSans-Oblique.ttf",
+                           "DejaVuSans-BoldOblique.ttf", "DejaVuSansMono.ttf")]
+        if all(path.is_file() for path in portable_files):
+            return portable_files, "DejaVu Sans", "DejaVu Sans Mono"
+    except ImportError:
+        pass
+    windows = Path("C:/Windows/Fonts")
+    windows_files = [windows / name for name in
+                     ("arial.ttf", "arialbd.ttf", "ariali.ttf", "arialbi.ttf", "consola.ttf")]
+    if all(path.is_file() for path in windows_files):
+        return windows_files, "Arial", "Consolas"
+    raise RuntimeError("Unicode report fonts unavailable. Install the pinned matplotlib dependency "
+                       "with its bundled DejaVu Sans and DejaVu Sans Mono fonts, or provide the "
+                       "complete Windows Arial/Consolas families. No Helvetica/Courier fallback "
+                       "is used because it can silently lose mathematical characters.")
+
+
 def styles():
-    fontdir = Path("C:/Windows/Fonts")
-    if (fontdir / "arial.ttf").exists():
-        for name, file in [("BodyFont", "arial.ttf"), ("BodyFont-Bold", "arialbd.ttf"), ("BodyFont-Italic", "ariali.ttf")]:
-            if name not in pdfmetrics.getRegisteredFontNames():
-                pdfmetrics.registerFont(TTFont(name, str(fontdir / file)))
-        pdfmetrics.registerFontFamily("BodyFont", normal="BodyFont", bold="BodyFont-Bold", italic="BodyFont-Italic", boldItalic="BodyFont-Bold")
-        face, bold = "BodyFont", "BodyFont-Bold"
-    else:
-        face, bold = "Helvetica", "Helvetica-Bold"
-    if (fontdir / "consola.ttf").exists():
-        if "CodeFont" not in pdfmetrics.getRegisteredFontNames():
-            pdfmetrics.registerFont(TTFont("CodeFont", str(fontdir / "consola.ttf")))
-        mono = "CodeFont"
-    else:
-        mono = "Courier"
+    files, _, _ = _font_files()
+    for name, path in zip(("BodyFont", "BodyFont-Bold", "BodyFont-Italic", "BodyFont-BoldItalic", "CodeFont"), files):
+        if name not in pdfmetrics.getRegisteredFontNames():
+            pdfmetrics.registerFont(TTFont(name, str(path)))
+    pdfmetrics.registerFontFamily("BodyFont", normal="BodyFont", bold="BodyFont-Bold",
+                                 italic="BodyFont-Italic", boldItalic="BodyFont-BoldItalic")
+    face, bold, mono = "BodyFont", "BodyFont-Bold", "CodeFont"
     s = getSampleStyleSheet()
     for name in ["Normal", "BodyText"]:
         s[name].fontName = face; s[name].fontSize = 10; s[name].leading = 14
@@ -193,21 +221,77 @@ def styles():
     s.add(ParagraphStyle("SmallNote", parent=s["BodyText"], fontSize=8, leading=11, textColor=colors.HexColor("#526574")))
     s.add(ParagraphStyle("CodeBlock", parent=s["BodyText"], fontName=mono, fontSize=7.5, leading=10,
                          backColor=colors.HexColor("#F1F4F6"), borderPadding=6))
+    s.add(ParagraphStyle("ListText", parent=s["BodyText"], leftIndent=16,
+                         firstLineIndent=0, bulletIndent=0))
+    s.add(ParagraphStyle("TableText", parent=s["SmallNote"], fontSize=8, leading=10.5,
+                         textColor=colors.HexColor("#" + INK)))
+    s.add(ParagraphStyle("CompactTableText", parent=s["TableText"], fontSize=7.5, leading=9.5))
     return s
 
 
-def inline(s):
+def _public_link(target, source=None):
+    target = html.unescape(target)
+    if target.startswith(("https://", "http://")):
+        return target
+    if source is None or target.startswith("#"):
+        return None
+    relative, _, fragment = target.partition("#")
+    try:
+        path = (source.parent / relative).resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        return None
+    return ("https://github.com/JoshGutierrez56/personalized-model-portfolios/blob/main/"
+            + quote(path.as_posix()) + ("#" + quote(fragment) if fragment else ""))
+
+
+def inline(s, source=None):
     s = html.escape(s)
-    s = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", lambda m: m[1] + (f' (<link href="{m[2]}">{m[2]}</link>)' if m[2].startswith("https://") else ""), s)
+    def link(match):
+        target = _public_link(match[2], source)
+        return f'<link href="{html.escape(target, quote=True)}" color="#{TEAL}">{match[1]}</link>' if target else match[1]
+    s = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", link, s)
     s = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", s)
-    s = re.sub(r"`([^`]+)`", r'<font name="Courier">\1</font>', s)
+    s = re.sub(r"`([^`]+)`", r'<font name="CodeFont">\1</font>', s)
     return s
+
+
+def _word_inline(paragraph, text, source, mono):
+    """Preserve bold, code and clickable links without raw Markdown in Word."""
+    token = re.compile(r"(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))")
+    for part in token.split(text):
+        if not part:
+            continue
+        link = re.fullmatch(r"\[([^\]]+)\]\(([^)]+)\)", part)
+        if link and (target := _public_link(link[2], source)):
+            relationship = paragraph.part.relate_to(target, RT.HYPERLINK, is_external=True)
+            hyperlink = OxmlElement("w:hyperlink"); hyperlink.set(qn("r:id"), relationship)
+            run = OxmlElement("w:r"); props = OxmlElement("w:rPr")
+            color = OxmlElement("w:color"); color.set(qn("w:val"), TEAL); props.append(color)
+            underline = OxmlElement("w:u"); underline.set(qn("w:val"), "single"); props.append(underline)
+            run.append(props); value = OxmlElement("w:t"); value.text = link[1]; run.append(value)
+            hyperlink.append(run); paragraph._p.append(hyperlink)
+        elif part.startswith("**"):
+            paragraph.add_run(part[2:-2]).bold = True
+        elif part.startswith("`"):
+            paragraph.add_run(part[1:-1]).font.name = mono
+        else:
+            paragraph.add_run(link[1] if link else part)
+
+
+def _check_glyphs(text, font_name, context):
+    supported = pdfmetrics.getFont(font_name).face.charWidths
+    missing = sorted({character for character in text if not character.isspace()
+                      and ord(character) not in supported})
+    if missing:
+        examples = ", ".join(f"{character} (U+{ord(character):04X})" for character in missing[:12])
+        raise RuntimeError(f"{context}: {font_name} lacks required glyphs: {examples}. "
+                           "Use a Unicode font with coverage rather than publishing missing-glyph boxes.")
 
 
 def footer(canvas, doc):
     canvas.saveState(); w, h = doc.pagesize
     canvas.setStrokeColor(colors.HexColor("#D9E2E9")); canvas.line(45, 38, w - 45, 38)
-    canvas.setFont("Helvetica", 8); canvas.setFillColor(colors.HexColor("#526574"))
+    canvas.setFont("BodyFont", 8); canvas.setFillColor(colors.HexColor("#526574"))
     canvas.drawString(45, 26, "Josh Gutierrez | Portfolio Validation & Investment Oversight")
     canvas.drawRightString(w - 45, 26, str(doc.page)); canvas.restoreState()
 
@@ -228,43 +312,85 @@ def render_markdown(source: Path, stem: str):
     if re.search(r"\bTODO\b|\bTBD\b|\[INSERT", text):
         raise ValueError(f"Unresolved drafting placeholder in {source.name}")
     st = styles(); flow = []; docx = Document()
+    _, word_face, word_mono = _font_files()
+    _check_glyphs(text, "BodyFont", source.name)
     sec = docx.sections[0]; sec.top_margin = Inches(.7); sec.bottom_margin = Inches(.65)
     sec.left_margin = Inches(.7); sec.right_margin = Inches(.7)
-    normal = docx.styles["Normal"]; normal.font.name = "Calibri"; normal.font.size = Pt(10)
+    normal = docx.styles["Normal"]; normal.font.name = word_face; normal.font.size = Pt(10)
     normal.paragraph_format.space_after = Pt(6)
+    for name in ["Title", "Heading 1", "Heading 2", "Heading 3"]:
+        docx.styles[name].font.name = word_face
+        docx.styles[name].font.color.rgb = RGBColor.from_string(NAVY)
     docx.core_properties.author = "Josh Gutierrez"
     docx.core_properties.title = stem.replace("_", " ")
     docx.core_properties.comments = ""
+    heading = sec.header.paragraphs[0]
+    heading.add_run("PORTFOLIO OVERSIGHT LAB").font.size = Pt(8)
+    foot = sec.footer.paragraphs[0]
+    foot.add_run("Josh Gutierrez | " + stem.replace("_", " ") + " | Page ").font.size = Pt(8)
+    field = OxmlElement("w:fldSimple"); field.set(qn("w:instr"), "PAGE"); foot._p.append(field)
     code = []; in_code = False; table = []
     def flush_table():
         nonlocal table
         if not table: return
-        data = [[Paragraph(inline(x.strip()), st["SmallNote"]) for x in row] for row in table]
-        n = max(map(len, data)); data = [r + [Paragraph("", st["SmallNote"])] * (n - len(r)) for r in data]
+        n = max(map(len, table))
+        table_style = st["CompactTableText"] if n >= 6 else st["TableText"]
+        numeric_style = ParagraphStyle("NumericTable", parent=table_style, alignment=TA_RIGHT)
+        def numeric(value):
+            return re.fullmatch(r"[+\-−]?\$?\d[\d,]*(?:\.\d+)?%?", value.strip()) is not None
+        numeric_columns = {
+            i for i in range(n)
+            if any(i < len(row) and numeric(row[i]) for row in table[1:])
+            and all(i >= len(row) or numeric(row[i]) or row[i].strip() in {"", "—", "–", "-"}
+                    for row in table[1:])
+        }
+        data = [[Paragraph(("<b>" if j == 0 else "") + inline(x.strip(), source)
+                           + ("</b>" if j == 0 else ""), numeric_style if i in numeric_columns else table_style)
+                 for i, x in enumerate(row)] for j, row in enumerate(table)]
+        data = [r + [Paragraph("", table_style)] * (n - len(r)) for r in data]
         widths = [(7.05 * inch) / n] * n
         if n == 3 and any("Location" in cell for cell in table[0]):
             widths = [7.05 * inch * fraction for fraction in (.24, .49, .27)]
+        elif n == 7:
+            widths = [7.05 * inch * fraction for fraction in (.19, .135, .135, .135, .135, .135, .135)]
+        elif n == 4 and table[0][0].strip() == "Minutes":
+            widths = [7.05 * inch * fraction for fraction in (.12, .32, .10, .46)]
         t = Table(data, repeatRows=1, colWidths=widths)
         t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E8EFF3")),
             ("VALIGN", (0, 0), (-1, -1), "TOP"), ("GRID", (0, 0), (-1, -1), .3, colors.HexColor("#D5DEE5")),
             ("LEFTPADDING", (0, 0), (-1, -1), 5), ("RIGHTPADDING", (0, 0), (-1, -1), 5)]))
         flow.extend([t, Spacer(1, 8)])
         dt = docx.add_table(rows=0, cols=n); dt.style = "Light Shading Accent 1"
-        for row in table:
-            cells = dt.add_row().cells
-            for i, val in enumerate(row): cells[i].text = val.strip().replace("**", "").replace("`", "")
+        dt.autofit = False
+        for i, width in enumerate(widths):
+            dt.columns[i].width = Inches(width / inch)
+        for row_number, row in enumerate(table):
+            dr = dt.add_row(); cells = dr.cells
+            if row_number == 0:
+                repeat = OxmlElement("w:tblHeader"); dr._tr.get_or_add_trPr().append(repeat)
+            for i, val in enumerate(row):
+                cells[i].width = Inches(widths[i] / inch)
+                p = cells[i].paragraphs[0]
+                if i in numeric_columns:
+                    p.alignment = 2  # WordprocessingML right alignment.
+                _word_inline(p, val.strip(), source, word_mono)
+                p.paragraph_format.space_after = Pt(3)
+                for run in p.runs:
+                    run.font.size = Pt(7.5 if n >= 6 else 8)
+                    if row_number == 0: run.bold = True
         table = []
     for line in text.splitlines():
         if line.startswith("```"):
             flush_table()
             if in_code:
                 raw = "\n".join(code)
+                _check_glyphs(raw, "CodeFont", source.name + " code block")
                 # Avoid off-page monospace: wrap only visually, preserve source separately.
                 import textwrap
                 wrapped = "\n".join(part for ln in code for part in (textwrap.wrap(ln, width=98, replace_whitespace=False) or [""]))
                 flow.extend([Preformatted(wrapped, st["CodeBlock"]), Spacer(1, 8)])
                 p = docx.add_paragraph(raw); p.style = "No Spacing"
-                for run in p.runs: run.font.name = "Consolas"; run.font.size = Pt(8)
+                for run in p.runs: run.font.name = word_mono; run.font.size = Pt(8)
                 code = []
             in_code = not in_code; continue
         if in_code: code.append(line); continue
@@ -278,14 +404,22 @@ def render_markdown(source: Path, stem: str):
         if m:
             level, title = min(len(m[1]), 3), m[2]
             style = "Title" if len(m[1]) == 1 else f"Heading{level - 1}"
-            heading = Paragraph(inline(title), st[style])
+            heading = Paragraph(inline(title, source), st[style])
             heading._outline_level = max(0, min(len(m[1]) - 2, 1))
             flow.append(heading); docx.add_heading(title, level=0 if len(m[1]) == 1 else level - 1)
         else:
-            bullet = re.match(r"^(?:[-*]|\d+\.)\s+(.*)", line)
-            content = bullet[1] if bullet else line.removeprefix("> ")
-            flow.append(Paragraph(inline(content), st["BodyText"], bulletText="•" if bullet else None))
-            docx.add_paragraph(content.replace("**", "").replace("`", ""), style="List Bullet" if bullet else "Normal")
+            bullet = re.match(r"^([-*]|\d+\.)\s+(.*)", line)
+            content = bullet[2] if bullet else line.removeprefix("> ")
+            for code_text in re.findall(r"`([^`]+)`", content):
+                _check_glyphs(code_text, "CodeFont", source.name + " inline code")
+            marker = (bullet[1] if bullet[1][0].isdigit() else "•") if bullet else None
+            flow.append(Paragraph(inline(content, source), st["ListText"] if bullet else st["BodyText"], bulletText=marker))
+            p = docx.add_paragraph(style="Normal")
+            if marker:
+                p.paragraph_format.left_indent = Pt(14)
+                p.paragraph_format.first_line_indent = Pt(-14)
+                p.add_run(marker + " ")
+            _word_inline(p, content, source, word_mono)
     flush_table()
     pdf = OUT / f"{stem}.pdf"
     GuideDocTemplate(str(pdf), pagesize=(612, 792), rightMargin=45, leftMargin=45,
@@ -295,7 +429,8 @@ def render_markdown(source: Path, stem: str):
 
 
 def memo():
-    b, i, r = read("validation_summary.json"), read("incident_summary.json"), read("run_receipt.json")
+    bundle = validate_release_bundle(ROOT)
+    b, i, r = bundle["baseline"], bundle["incidents"], bundle["receipt"]
     st = styles()
     f = [Paragraph("Portfolio oversight", st["Title"]), Paragraph("Decision memo | independent validation and implementation economics", st["Heading2"]),
         Paragraph(f"Research evidence run: {r['run_id']} · {r['completed_utc'][:10]}", st["SmallNote"]),
@@ -325,10 +460,17 @@ def memo():
 
 
 def main():
-    if read("run_receipt.json")["status"] != "PASS": raise RuntimeError("Do not render a release package from a failed research gate.")
+    validate_release_bundle(ROOT)
+    OUT.mkdir(parents=True, exist_ok=True)
     evidence = {"created_utc": datetime.now(timezone.utc).isoformat(), "workbook": workbook(), "memo": memo()}
-    for path, stem in [(ROOT / "docs/INTERVIEW_GUIDE.md", "Interview_Guide"), (ROOT / "docs/OVERSIGHT_METHODOLOGY.md", "Oversight_Methodology")]:
+    for path, stem in [(ROOT / "docs/INTERVIEW_GUIDE.md", "Interview_Guide"),
+                       (ROOT / "docs/OVERSIGHT_METHODOLOGY.md", "Oversight_Methodology"),
+                       (ROOT / "docs/INTERVIEW_PRACTICE.md", "Interview_Practice")]:
         if path.exists(): evidence[stem] = render_markdown(path, stem)
+    _, body_font, code_font = _font_files()
+    evidence["fonts"] = {"pdf_body": body_font, "pdf_code": code_font,
+                         "pdf_fonts_embedded": True,
+                         "docx_note": "Word files request these families but do not embed fonts; the reader may substitute available fonts."}
     evidence["files"] = {p.name: {"bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
         for p in sorted(OUT.iterdir()) if p.is_file() and p.suffix in {".pdf", ".docx", ".xlsx"}}
     (OUT / "report_manifest.json").write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")

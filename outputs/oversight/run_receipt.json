@@ -1,8 +1,8 @@
 {
-  "run_id": "oversight-20261012T234925",
-  "started_utc": "2026-10-12T23:49:25.170427+00:00",
-  "completed_utc": "2026-10-12T23:51:32.067685+00:00",
-  "elapsed_seconds": 126.897,
+  "run_id": "oversight-20261013T034644",
+  "started_utc": "2026-10-13T03:46:44.875025+00:00",
+  "completed_utc": "2026-10-13T03:48:42.488421+00:00",
+  "elapsed_seconds": 117.61,
   "python": "3.10.11",
   "baseline_status": "PASS",
   "injected_cases": 5,
@@ -14,6 +14,7 @@
     "data/wrds/calendar.csv": "69b684681dd34a2fdc662563a3e060cb7d86b71e4f7d8cea9f8f6ac95938b53a",
     "data/wrds/identities.csv": "77b06ec307a732a2c62840da34279709f5c9ca0985f18636e01a06c1a08befcb",
     "data/wrds/manifest.json": "858e366756894b53a60dcb68c3b00178cc8476ae6fbdcee98cce698c8f0227f9",
+    "outputs/wrds/scenario_summary.csv": "55d48175d52c1b023da7feec82f46b670c07b39a97ddc6e82a6b5d6abdd2a805",
     "outputs/wrds_private/daily.csv": "3daf7e074a460de197f3d81a4e25d75b768d7167c56af4496ba77d90960abc0d",
     "outputs/wrds_private/trades.csv": "ee5dee0a384c899ddd52a43835ce1d77cb189ff1df33ee48350bce6d538c9f91",
     "outputs/wrds_private/decisions.csv": "1f74a5fcbe9475d5bf9a24555a3da346deb1f6b1d6ba586d21cf3c07efa217a1",
@@ -21,11 +22,17 @@
     "outputs/wrds/run_summary.json": "54d81352ddc366b6fd76cfc7e55f361a79820526b5172d16e6390b1c7d4e05b3"
   },
   "challenger_code_sha256": {
-    "run_oversight.py": "4a594962d3812fb1cf4f9299de917d0378e00b02b841151df6f955f81666b492",
-    "oversight_core.py": "50ffbe09e36b8eb369227aa2ef27e4fef7335a6aa5cc2e43b75e3066271ab747",
+    "run_oversight.py": "c379a54fc7304c8c87b01bb26e944e31a291bb8eaef952d23628bca9bda2a8cf",
+    "oversight_core.py": "1bae6943b0dc77e4085414a0e597d8781ae466f59f2fb2f9a7a9b3934e249236",
     "oversight_contract.json": "b1a15ed553d313012bf22ddfe952e7aceabeb04d75f37febd225c5aaf612bb1a",
     "sql/oversight_daily_controls.sql": "7503d3ffd72f652b9ea472afe816bb0e0abf0ce9de61fad196a5ca35b8cf4837",
     "sql/oversight_trade_controls.sql": "bd22992db2a27ebc9266f7c36fa674f6b82376a3823f39360fb5e0a1842be44f"
+  },
+  "public_artifact_sha256": {
+    "outputs/oversight/validation_summary.json": "afba2f564c2ed687e8c7c9c5374ccbfe857e49812d194e24d55703df96fbd303",
+    "outputs/oversight/incident_summary.json": "cea6c97b496d7dec3b601bd88f9045e08018da164ac9e8699f45c6f9fb77f0e0",
+    "outputs/oversight/historical_stress.json": "43b70392b29d14943a0f64009fe25e2d6cd92af03acce29438e38693a831591f",
+    "outputs/wrds/scenario_summary.csv": "55d48175d52c1b023da7feec82f46b670c07b39a97ddc6e82a6b5d6abdd2a805"
   },
   "status": "PASS",
   "interpretation": "Technical evidence-release decision only. Not investment approval, an actual order gate, or a claim of future alpha.",
