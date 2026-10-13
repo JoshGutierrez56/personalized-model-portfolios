@@ -18,7 +18,7 @@ The portfolio implementation study below now has a separately implemented **Pyth
 | **115 baseline controls passed** | Accounting, source/configuration provenance, chronology, risk windows, constraints and versioned SQL |
 | **5 / 5 deliberately injected faults blocked** | Wrong return definition, duplicate trade, look-ahead timestamp, prohibited allocation and fee error |
 | **Clean retest passed; original input hashes unchanged** | Mutations operate only on in-memory copies |
-| **282 tests passed with warnings treated as errors** | Original research, hand-derived challenger fixtures and independent adversarial cases |
+| **Public tests run with warnings treated as errors** | Original research, hand-derived challenger fixtures and independent adversarial cases; [commit-specific Linux/Windows results](https://github.com/JoshGutierrez56/personalized-model-portfolios/actions/workflows/validation.yml) |
 
 This is **retrospective research validation**, not a production trading platform. Passing the technical gate releases evidence for review; it does not authorize an investment decision. The main investment conclusion remains: in the no-gold account, roughly 60% less turnover saved only about $110 annually per constant $1m at the assumed cost rate, while adding about 27bp of realized tracking risk.
 
