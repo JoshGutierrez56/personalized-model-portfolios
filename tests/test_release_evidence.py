@@ -32,11 +32,13 @@ def _attribution(client, method):
 
 @pytest.fixture
 def bundle():
+    contract = {"config": {"initial_value": 100.0}, "annualization": 3}
     sources = {key: hashlib.sha256(f"fictional input {key}".encode()).hexdigest() for key in SOURCE_PATHS}
     pairs = [("Synthetic A", "Illustrative method"), ("Synthetic B", "Illustrative method")]
     baseline = {
         "status": "PASS", "blockers": [], "checks": [_check("nav"), _check("fee"), _check("keys")],
-        "provenance": {"source_sha256": sources, "override_sha256": {}, "engine_imported": False},
+        "provenance": {"contract_sha256": hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest(),
+                       "source_sha256": sources, "override_sha256": {}, "engine_imported": False},
         "aggregate": {"paths": 2, "evaluation_dates": 3, "execution_dates": 1, "source_dates": 4,
                       "assets": 2, "returns_rows": 8, "calendar_rows": 4, "daily_rows": 6,
                       "decisions_rows": 2, "trades_rows": 4, "benchmark_rows": 3,
@@ -68,11 +70,12 @@ def bundle():
                "net_return_pct": -1.0, "benchmark_return_pct": -1.2,
                "active_cumulative_return_pp": 0.2, "window_max_drawdown_pct": -1.0}
               for episode in ("Fictional window A", "Fictional window B") for client, method in pairs]
-    return {"baseline": baseline, "incidents": incidents, "receipt": receipt, "scenarios": scenarios, "stress": stress}
+    return {"baseline": baseline, "incidents": incidents, "receipt": receipt, "scenarios": scenarios, "stress": stress, "contract": contract}
 
 
 def _save(root: Path, bundle):
     """Seal exact bytes after each mutation so semantic tests go beyond hashes."""
+    (root / "oversight_contract.json").write_text(json.dumps(bundle["contract"], indent=2), encoding="utf-8")
     for name, relative in PUBLIC_ARTIFACTS.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -466,7 +469,7 @@ def test_matching_scenario_and_reconstructed_values_must_match_linked_cost(tmp_p
     bundle["scenarios"][0][field] = value
     bundle["baseline"]["aggregate"]["path_metrics"][0][field] = value
     _save(tmp_path, bundle)
-    with pytest.raises(ReleaseEvidenceError, match="cost-NAV disagreement"):
+    with pytest.raises(ReleaseEvidenceError, match="disagreement"):
         validate_release_bundle(tmp_path)
 
 
@@ -481,6 +484,10 @@ def test_cross_table_funded_path_domain(tmp_path, bundle, field, value):
 
 @pytest.mark.parametrize("growth,cost,capital", [(1.1, 2.0, 100.0), (0.8, 0.0, 250.0), (1.0, 10.0, 1000.0)])
 def test_cross_table_identity_accepts_gains_losses_zero_cost_and_different_capital(tmp_path, bundle, growth, cost, capital):
+    bundle["contract"]["config"]["initial_value"] = capital
+    _bind_contract(bundle)
+    for target in (bundle["scenarios"][1], bundle["baseline"]["aggregate"]["path_metrics"][1]):
+        target.update(terminal_nav=capital, total_cost_dollars=capital * 0.01)
     row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
     total = growth - 1.0
     linked_cost = -cost / capital
@@ -489,7 +496,7 @@ def test_cross_table_identity_accepts_gains_losses_zero_cost_and_different_capit
     row["linked_asset_pnl"] = {"AA": total - linked_cost, "BB": 0.0}
     row["linked_active_asset_pnl"] = {"AA": total - linked_cost - 0.01, "BB": -0.02}
     for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
-        target.update(terminal_nav=capital * growth, total_cost_dollars=cost)
+        target.update(terminal_nav=capital * growth, total_cost_dollars=cost, net_cagr_pct=total * 100)
     _save(tmp_path, bundle)
     validate_release_bundle(tmp_path)
 
@@ -509,5 +516,165 @@ def test_coherent_attribution_change_cannot_bypass_cross_table_check(tmp_path, b
     row["linked_asset_pnl"]["AA"] += total
     row["linked_active_asset_pnl"]["AA"] += total
     _save(tmp_path, bundle)
-    with pytest.raises(ReleaseEvidenceError, match="attribution/reconstructed"):
+    with pytest.raises(ReleaseEvidenceError, match="disagreement"):
+        validate_release_bundle(tmp_path)
+
+
+def _bind_contract(bundle):
+    """Bind synthetic policy semantically, independently of its file whitespace."""
+    bundle["baseline"]["provenance"]["contract_sha256"] = hashlib.sha256(
+        json.dumps(bundle["contract"], sort_keys=True).encode("utf-8")
+    ).hexdigest()
+
+
+@pytest.mark.parametrize("mutation", ["missing_digest", "bad_digest", "wrong_digest", "policy_changed"])
+def test_contract_must_match_independent_baseline_policy(tmp_path, bundle, mutation):
+    provenance = bundle["baseline"]["provenance"]
+    if mutation == "missing_digest":
+        del provenance["contract_sha256"]
+    elif mutation == "bad_digest":
+        provenance["contract_sha256"] = "not-a-sha256"
+    elif mutation == "wrong_digest":
+        provenance["contract_sha256"] = "0" * 64
+    else:
+        bundle["contract"]["annualization"] = 12
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="contract"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("line_endings", ["\n", "\r\n"])
+def test_contract_digest_accepts_equivalent_json_formatting(tmp_path, bundle, line_endings):
+    _save(tmp_path, bundle)
+    raw = json.dumps(bundle["contract"], sort_keys=True, indent=4) + "\n"
+    (tmp_path / "oversight_contract.json").write_bytes(raw.replace("\n", line_endings).encode())
+    validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("field", ["initial_value", "annualization"])
+@pytest.mark.parametrize("value", [None, True, False, "100", [], {}, 0, -1, float("nan"), float("inf"), float("-inf"), 10 ** 400])
+def test_contract_conventions_are_strict_positive_finite_numbers(tmp_path, bundle, field, value):
+    target = bundle["contract"]["config"] if field == "initial_value" else bundle["contract"]
+    target[field] = value
+    _bind_contract(bundle)
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["missing_file", "malformed_json", "missing_config", "array_config", "missing_initial", "missing_annualization"])
+def test_contract_malformed_or_absent_fails_closed(tmp_path, bundle, mutation):
+    contract = bundle["contract"]
+    if mutation == "missing_config":
+        del contract["config"]
+    elif mutation == "array_config":
+        contract["config"] = []
+    elif mutation == "missing_initial":
+        del contract["config"]["initial_value"]
+    elif mutation == "missing_annualization":
+        del contract["annualization"]
+    _bind_contract(bundle)
+    _save(tmp_path, bundle)
+    path = tmp_path / "oversight_contract.json"
+    if mutation == "missing_file":
+        path.unlink()
+    elif mutation == "malformed_json":
+        path.write_text("{broken", encoding="utf-8")
+    with pytest.raises(ReleaseEvidenceError, match="contract"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("cost", [0.0, 1.0])
+def test_coherent_dollar_rescaling_cannot_override_contract_capital(tmp_path, bundle, cost):
+    # Cost/NAV alone survives scaling both fields; the declared capital must not.
+    if cost == 0:
+        attribution = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+        attribution["linked_cost_contribution"] = 0.0
+        attribution["linked_asset_pnl"]["AA"] -= 0.01
+        attribution["linked_active_asset_pnl"]["AA"] -= 0.01
+    for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+        target.update(terminal_nav=200.0, total_cost_dollars=2 * cost)
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="disagreement"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("annualization", [3, 12, 252])
+def test_contract_annualization_binds_nonzero_cagr(tmp_path, bundle, annualization):
+    bundle["contract"]["annualization"] = annualization
+    _bind_contract(bundle)
+    total = 0.01
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    for field in ("portfolio_total_return", "active_total_return_difference"):
+        row[field] += total
+    for field in ("linked_asset_pnl", "linked_active_asset_pnl"):
+        row[field]["AA"] += total
+    cagr = ((1 + total) ** (annualization / 3) - 1) * 100
+    for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+        target.update(terminal_nav=101.0, net_cagr_pct=cagr)
+    _save(tmp_path, bundle)
+    validate_release_bundle(tmp_path)
+    # A matching pair of summaries still cannot invent the annualized return.
+    for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+        target["net_cagr_pct"] += 1.0
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="[Cc][Aa][Gg][Rr]|annualized"):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("mutation", ["nav_ratio", "cost_ratio", "cagr_power"])
+def test_contract_arithmetic_overflow_is_domain_error_not_python_exception(tmp_path, bundle, mutation):
+    if mutation in ("nav_ratio", "cost_ratio"):
+        bundle["contract"]["config"]["initial_value"] = 1e-308
+        for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+            target["terminal_nav" if mutation == "nav_ratio" else "total_cost_dollars"] = 1e308
+    else:
+        bundle["contract"]["annualization"] = 1e308
+        row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+        for field in ("portfolio_total_return", "active_total_return_difference"):
+            row[field] += 1.0
+        for field in ("linked_asset_pnl", "linked_active_asset_pnl"):
+            row[field]["AA"] += 1.0
+        for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+            target["terminal_nav"] = 200.0
+    _bind_contract(bundle)
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError):
+        validate_release_bundle(tmp_path)
+
+
+@pytest.mark.parametrize("quantity", ["normalized_growth", "annualization_exponent"])
+def test_positive_contract_operands_cannot_underflow_to_zero(tmp_path, bundle, quantity):
+    if quantity == "annualization_exponent":
+        bundle["contract"]["annualization"] = 5e-324
+    else:
+        bundle["contract"]["config"]["initial_value"] = 1e308
+        row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+        total = -1.0 + 1e-12
+        row.update(portfolio_total_return=total, active_total_return_difference=total - 0.03,
+                   linked_cost_contribution=0.0)
+        row["linked_asset_pnl"] = {"AA": total, "BB": 0.0}
+        row["linked_active_asset_pnl"] = {"AA": total - 0.01, "BB": -0.02}
+        for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+            target.update(terminal_nav=5e-324, total_cost_dollars=0.0, net_cagr_pct=-100.0)
+        for target in (bundle["scenarios"][1], bundle["baseline"]["aggregate"]["path_metrics"][1]):
+            target.update(terminal_nav=1e308, total_cost_dollars=1e306)
+    _bind_contract(bundle)
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="CAGR arithmetic domain"):
+        validate_release_bundle(tmp_path)
+
+
+def test_positive_growth_power_cannot_underflow_to_zero(tmp_path, bundle):
+    bundle["contract"]["annualization"] = 1e308
+    row = bundle["baseline"]["aggregate"]["attribution_totals"][0]
+    row.update(portfolio_total_return=-0.5, active_total_return_difference=-0.53,
+               linked_cost_contribution=0.0)
+    row["linked_asset_pnl"] = {"AA": -0.5, "BB": 0.0}
+    row["linked_active_asset_pnl"] = {"AA": -0.51, "BB": -0.02}
+    for target in (bundle["scenarios"][0], bundle["baseline"]["aggregate"]["path_metrics"][0]):
+        target.update(terminal_nav=50.0, total_cost_dollars=0.0, net_cagr_pct=-100.0)
+    _bind_contract(bundle)
+    _save(tmp_path, bundle)
+    with pytest.raises(ReleaseEvidenceError, match="CAGR arithmetic domain"):
         validate_release_bundle(tmp_path)

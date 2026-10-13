@@ -2,7 +2,8 @@
 
 This verifies a receipt-bound snapshot, not the truth of its source observations or
 an authenticated signature. It never opens licensed inputs or hashes current code.
-Hash-bound public artifacts must retain their exact bytes in a Git checkout.
+Receipt-bound aggregate artifacts retain exact bytes in a Git checkout; the
+baseline binds the policy contract using the producer's canonical JSON encoding.
 """
 from __future__ import annotations
 
@@ -255,7 +256,8 @@ def validate_release_bundle(root: Path) -> dict:
 
     ``scenarios`` is a list of CSV dictionaries with parsed numeric values. Raises
     :class:`ReleaseEvidenceError` on missing, stale, malformed, contradictory, or
-    nonfinite evidence. Only five public files are read, including the receipt.
+    nonfinite evidence. Only six public files are read, including the receipt
+    and the policy contract (canonically bound by baseline provenance).
     The receipt's four ``public_artifact_sha256`` keys use repository-relative
     POSIX paths from :data:`PUBLIC_ARTIFACTS` and exact-byte SHA-256 digests.
     """
@@ -301,6 +303,16 @@ def validate_release_bundle(root: Path) -> dict:
         _require(all(isinstance(item, str) for item in blockers), f"{label} blockers must be strings")
         _require(len(blockers) == len(set(blockers)) and set(blockers) == failed, f"{label} blockers disagree with failed controls")
     provenance = _mapping(baseline.get("provenance"), "baseline.provenance")
+    contract = _mapping(_json(_read_bytes(root / "oversight_contract.json"), "contract"), "contract")
+    contract_digest = _digest(provenance.get("contract_sha256"), "baseline.provenance.contract_sha256")
+    # Match the independent producer's semantic JSON convention, not checkout
+    # newlines. This binds recorded policy; it is not a signature/authentication.
+    _require(hashlib.sha256(json.dumps(contract, sort_keys=True).encode()).hexdigest() == contract_digest,
+             "contract fingerprint mismatch")
+    config = _mapping(contract.get("config"), "contract.config")
+    capital = float(_number(config.get("initial_value"), "contract.config.initial_value"))
+    annualization = float(_number(contract.get("annualization"), "contract.annualization"))
+    _require(capital > 0 and annualization > 0, "contract capital and annualization must be positive")
     _require(provenance.get("engine_imported") is False, "baseline must not import the production engine")
     _require(provenance.get("override_sha256") == {}, "baseline must not use overridden inputs")
     sources = _mapping(provenance.get("source_sha256"), "baseline.provenance.source_sha256")
@@ -344,7 +356,7 @@ def validate_release_bundle(root: Path) -> dict:
     _require(len(attribution) == len(paths) and {_path_pair(row, "attribution") for row in attribution} == paths, "attribution path count/coverage disagreement")
     _attribution(attribution, counts["assets"])
     # Eliminate initial capital from cost/V0 and terminal_NAV/V0 - 1.
-    # This is a per-path identity, not proof of the configured capital scale.
+    # This per-path identity complements the explicit policy checks below.
     for row in attribution:
         pair = _path_pair(row, "attribution")
         metric = metrics_by_path[pair]
@@ -356,6 +368,24 @@ def validate_release_bundle(root: Path) -> dict:
         residual = (cost / nav) * growth + float(row["linked_cost_contribution"])
         _require(math.isfinite(residual) and abs(residual) <= RETURN_TOLERANCE,
                  f"attribution/reconstructed cost-NAV disagreement: {pair}")
+        normalized_growth = nav / capital
+        exponent = annualization / counts["evaluation_dates"]
+        _require(math.isfinite(normalized_growth) and normalized_growth > 0
+                 and math.isfinite(exponent) and exponent > 0,
+                 f"contract CAGR arithmetic domain: {pair}")
+        _require(abs(normalized_growth - growth) <= RETURN_TOLERANCE,
+                 f"contract capital/terminal NAV disagreement: {pair}")
+        _require(abs(cost / capital + float(row["linked_cost_contribution"])) <= RETURN_TOLERANCE,
+                 f"contract capital/linked cost disagreement: {pair}")
+        try:
+            annualized_growth = normalized_growth ** exponent
+        except (OverflowError, ValueError, ZeroDivisionError) as exc:
+            raise ReleaseEvidenceError(f"Release evidence rejected: contract CAGR arithmetic domain: {pair}") from exc
+        _require(math.isfinite(annualized_growth) and annualized_growth > 0,
+                 f"contract CAGR arithmetic domain: {pair}")
+        cagr = (annualized_growth - 1.0) * 100
+        _require(math.isfinite(cagr) and abs(cagr - float(metric["net_cagr_pct"])) <= PERCENTAGE_POINT_TOLERANCE,
+                 f"contract annualization/CAGR disagreement: {pair}")
     stress = _sequence(loaded["stress"], "stress", nonempty=True)
     episodes = {}
     episode_windows = {}
