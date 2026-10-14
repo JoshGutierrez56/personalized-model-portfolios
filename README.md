@@ -1,180 +1,118 @@
 # Personalized Model Portfolios
 
-## Portfolio Validation & Investment Oversight Lab
+**Portfolio construction, independent Python + SQL validation, and investment oversight.**
 
-**Would I approve this rebalance—and can I independently explain its risks, costs and performance?**
+How much tracking risk is a client restriction worth—and can a second implementation verify the resulting portfolio? This project combines a **2014–2025 WRDS/CRSP-backed ETF study** with a separately implemented challenger that reconstructs holdings, fees, NAV, benchmark returns, and cumulative return contributions.
 
-The portfolio implementation study below now has a separately implemented **Python + SQL challenger**. It reconstructs holdings, fees, NAV, benchmark returns and cumulative return contributions; challenges the decision clock, risk calculations and client constraints; and demonstrates a complete injected-fault → diagnosis → correction → retest workflow.
+[**Explore the evidence dashboard**](https://joshgutierrez56.github.io/personalized-model-portfolios/) · [Decision memo · PDF](outputs/oversight/Portfolio_Oversight_Memo.pdf) · [Control workbook · Excel](outputs/oversight/Portfolio_Oversight.xlsx) · [Browse the validator](oversight_core.py)
 
-**Start here:** [Interactive evidence dashboard](https://joshgutierrez56.github.io/personalized-model-portfolios/) · [Two-page decision memo](outputs/oversight/Portfolio_Oversight_Memo.pdf) · [Excel control workbook](outputs/oversight/Portfolio_Oversight.xlsx)
+[![Portfolio oversight dashboard showing the baseline result, five detected injected failures, thirty reconstructed paths, and the investment decision.](docs/assets/oversight-preview.png)](https://joshgutierrez56.github.io/personalized-model-portfolios/)
 
-**Understand and defend it:** [Interview field guide · PDF](outputs/oversight/Interview_Guide.pdf) · [Editable guide · DOCX](outputs/oversight/Interview_Guide.docx) · [Technical methodology](docs/OVERSIGHT_METHODOLOGY.md)
+## What the saved evidence shows
 
-[![Portfolio oversight dashboard showing baseline PASS, five detected injected failures, thirty reconstructed paths and the investment decision.](docs/assets/oversight-preview.png)](https://joshgutierrez56.github.io/personalized-model-portfolios/)
-
-| Verified evidence | Scope |
+| Result | Scope and receipt |
 | :--- | :--- |
-| **30 paths / 90,540 daily records** independently reconstructed | 10 hypothetical accounts × 3 methods; actual WRDS/CRSP returns |
-| **115 baseline controls passed** | Accounting, source/configuration provenance, chronology, risk windows, constraints and versioned SQL |
-| **5 / 5 deliberately injected faults blocked** | Wrong return definition, duplicate trade, look-ahead timestamp, prohibited allocation and fee error |
-| **Clean retest passed; original input hashes unchanged** | Mutations operate only on in-memory copies |
-| **Public tests run with warnings treated as errors** | Original research, hand-derived challenger fixtures and independent adversarial cases; [commit-specific Linux/Windows results](https://github.com/JoshGutierrez56/personalized-model-portfolios/actions/workflows/validation.yml) |
+| **30 paths / 90,540 daily records reconstructed** | 10 hypothetical accounts × 3 methods; [baseline validation](outputs/oversight/validation_summary.json) |
+| **115 baseline controls passed** | Accounting, provenance, chronology, risk windows, constraints, and versioned SQL; [control methodology](docs/OVERSIGHT_METHODOLOGY.md) |
+| **5 / 5 deliberately injected faults blocked** | Wrong return definition, duplicate trade, look-ahead timestamp, prohibited allocation, and fee error; [incident evidence](outputs/oversight/incident_summary.json) |
+| **Clean retest passed; original inputs unchanged** | Mutations use in-memory copies; [run fingerprints](outputs/oversight/run_receipt.json) |
+| **Lower tracking error in all 9 constrained cases** | Minimum-risk versus proportional allocation: **20–69%** reduction, **35.5%** median; [research results](docs/RESULTS.md) |
 
-This is **retrospective research validation**, not a production trading platform. Passing the technical gate releases evidence for review; it does not authorize an investment decision. The main investment conclusion remains: in the no-gold account, roughly 60% less turnover saved only about $110 annually per constant $1m at the assumed cost rate, while adding about 27bp of realized tracking risk.
+These are saved research results, not live operating statistics. A technical PASS releases evidence for review; it does not approve a trade. For current automated checks, inspect the [commit-specific Linux and Windows CI results](https://github.com/JoshGutierrez56/personalized-model-portfolios/actions/workflows/validation.yml).
 
-### Try the validator without a data subscription
+## The investment decision
+
+**A dramatic turnover reduction need not be a compelling economic benefit.** In the no-gold account, lower-turnover allocation reduced annual one-way turnover from **18.23% to 7.25%**, but increased realized tracking error from **1.37% to 1.64%**. At the assumed cost of 5 bp per dollar bought or sold, the saving was only **1.10 bp annually—about $110 per constant $1m NAV**.
+
+[![No-gold account: roughly 60 percent lower turnover, 27 basis points more tracking error, and 1.10 basis points less modeled annual trading cost.](outputs/wrds/visual_brief/02_turnover_tradeoff.png)](outputs/wrds/visual_brief/WRDS_results_visual_brief.pdf)
+
+The dollar figure scales an annual cost-rate difference; it is not an exact CAGR benefit or guaranteed saving. The added-risk estimate has a paired 95% block-bootstrap interval of **20.0–35.6 bp**, conditional on this historical sample. Minimizing tracking error is not maximizing return, and the observed return ranking is not evidence of alpha.
+
+[Executed notebook](01_cost_of_customization.ipynb) · [Full results](docs/RESULTS.md) · [Four-page visual brief](outputs/wrds/visual_brief/WRDS_results_visual_brief.pdf) · [Scenario CSV](outputs/wrds/scenario_summary.csv)
+
+## Try the validator—no data subscription required
+
+Use Python 3.10–3.12. Clone the repository and create a virtual environment:
+
+```bash
+git clone https://github.com/JoshGutierrez56/personalized-model-portfolios.git
+cd personalized-model-portfolios
+python -m venv .venv
+```
+
+Activate it with `.venv\Scripts\Activate.ps1` in Windows PowerShell, or `source .venv/bin/activate` on macOS/Linux. Then:
 
 ```bash
 python -m pip install -r requirements-demo.txt
 python run_public_demo.py --no-write
 ```
 
-This small walkthrough uses **clearly artificial, hand-derived inputs**, not substitute market data. Follow an accounting reconciliation, observe named broken inputs get blocked, and inspect the corrected retest. The WRDS/CRSP investment evidence remains a separate research result.
+The walkthrough uses **explicitly artificial, hand-derived inputs**: reconcile the accounting, observe named faults being blocked, and inspect a corrected retest. It does not reproduce the market study or overwrite its published evidence.
 
-[60-minute rehearsal PDF](outputs/oversight/Interview_Practice.pdf) | [Editable rehearsal DOCX](outputs/oversight/Interview_Practice.docx) | [60-minute interview practice and answer key](docs/INTERVIEW_PRACTICE.md) · [Reproduction routes](docs/OVERSIGHT_REPRODUCING.md)
-
-### Review or reproduce
-
-The dashboard, workbook, reports and aggregate receipts are public. Licensed source rows and detailed security-day ledgers are not distributed. The public release guard also reconciles every displayed scenario metric to independently reconstructed accounting and risk results, checks artifact hashes, and rejects inconsistent incident evidence. Anyone can run the artificial validation fixtures without a WRDS login:
+To run the full public test suite, install the broader environment:
 
 ```bash
 python -m pip install -r requirements.txt
 python -m pytest -q -W error
 ```
 
-With your own licensed inputs and the saved original research ledgers:
+These tests need no WRDS login. [Reproduction routes and expected inputs](docs/OVERSIGHT_REPRODUCING.md) distinguish this public verification from an empirical rerun with your own licensed source data and original research ledgers. Missing market data stop the research pipeline; there is no synthetic-performance or alternative-vendor fallback.
 
-```bash
-python run_oversight.py
-python build_oversight_reports.py
-python build_oversight_dashboard.py
-```
+## How it is built
 
-[Reproduction routes and privacy boundaries](docs/OVERSIGHT_REPRODUCING.md) · [Baseline receipt](outputs/oversight/validation_summary.json) · [Incident evidence](outputs/oversight/incident_summary.json) · [Run fingerprints](outputs/oversight/run_receipt.json) · [Independent SQL](sql/)
+| Layer | Inspectable implementation |
+| :--- | :--- |
+| Source and decision clock | [WRDS ingestion](wrds_data.py), [walk-forward simulation](walkforward.py), [data contract](docs/DATA.md) |
+| Portfolio construction | [Allocation engine](portfolio_engine.py): bounded proportional, minimum tracking risk, and lower turnover within a risk budget |
+| Independent challenge | [Validator](oversight_core.py), [separately declared policy](oversight_contract.json), [daily SQL](sql/oversight_daily_controls.sql), [trade SQL](sql/oversight_trade_controls.sql) |
+| Fault investigation | [Oversight runner](run_oversight.py), [hand-derived and adversarial tests](tests/), [public walkthrough](run_public_demo.py) |
+| Evidence delivery | [Release consistency guard](release_evidence.py), [dashboard builder](build_oversight_dashboard.py), [report builder](build_oversight_reports.py) |
 
-The checker uses a separately declared [policy contract](oversight_contract.json), not the production engine's validation/accounting functions. It still shares source data, economic assumptions and a numerical covariance dependency; it does not certify optimizer optimality. Faults are deliberately injected tests—not client incidents—and a wrong-return replay with fixed recorded trades is diagnostic disagreement, not an investable alternative strategy. The project was built with AI coding and drafting assistance, with source, checks and interpretation kept inspectable.
+The study uses **8 ETFs, 32,192 source security-day observations, and 4,320 allocation decisions**. Risk estimates are lagged; old holdings earn the execution day's return before the planned trade occurs at the close. Subsequent holdings drift, and transaction costs are funded by the account.
 
----
+![Monthly decision sequence: estimate risk at the previous month-end close; old holdings earn the next trading day's return; execute at that day's close and fund costs; then allow holdings to drift.](docs/assets/decision-clock.svg)
 
-## Original portfolio implementation research
+The challenger does not call the original engine's accounting or validation functions. It does share source data, economic assumptions, and the Ledoit–Wolf covariance dependency; it does **not** independently certify optimizer optimality. The public release guard checks artifact hashes and financial consistency, not external authenticity of the data.
 
-**The cost of customization · Multi-asset portfolio research · WRDS / CRSP**
+**Stack:** Python, pandas, NumPy, DuckDB/SQL, scikit-learn, CVXPY/CLARABEL, Matplotlib, and PostgreSQL/libpq.
 
-How much tracking risk should a portfolio manager accept to accommodate a client's restrictions—and how much is avoiding a trade actually worth?
+## Research exhibits
 
-This study follows constrained ETF portfolios through a **2014–2025 walk-forward simulation**. It combines actual CRSP total returns, lagged risk estimates, monthly execution, drifting holdings, and transaction costs funded by the account.
+<details>
+<summary>Tracking risk, wealth paths, and sensitivity analysis</summary>
 
-[**Executed notebook →**](01_cost_of_customization.ipynb) · [**Results brief →**](docs/RESULTS.md) · [**Four-page PDF →**](outputs/wrds/visual_brief/WRDS_results_visual_brief.pdf) · [**Reproduce →**](docs/REPRODUCING.md)
+### Risk-aware allocation
 
-| Evidence | Research design | Validation |
-| :--- | :--- | :--- |
-| **32,192** CRSP security-day observations | **10** account scenarios × **3** methods | **4,320** checked allocation decisions |
-| **8 ETFs**, 2010–2025 source history | **12 years**, 2014–2025 evaluation | **22 tests** and an accounting audit |
-| Historical identities and source hashes | **8** sensitivity specifications | **8** executed notebook code cells |
+![Realized tracking error is lower under minimum-risk allocation in all nine constrained scenarios.](outputs/wrds/visual_brief/01_risk_aware_allocation.png)
 
-> **The investment conclusion:** risk-aware allocation improved model tracking across every constrained scenario. But for these liquid ETFs, a large reduction in turnover bought surprisingly little in direct trading-cost savings.
+### Closest tracking did not mean highest return
 
-The returns are observed data. Account restrictions, policy weights, initial wealth, and execution costs are explicit experimental assumptions.
+The no-gold implementations ended at **$2.26m–$2.46m** from $1m, versus **$2.54m** for the frictionless benchmark retaining its gold allocation. Exposure differences dominate small trading-cost savings.
 
-## Results at a glance
+![No-gold portfolio wealth and rolling tracking risk, 2014–2025.](outputs/wrds/visual_brief/03_wealth_and_risk.png)
 
-### 01 / Risk-aware allocation improved tracking in all nine constrained cases
+### Diminishing cost savings
 
-Minimum-tracking-risk allocation reduced realized tracking error by **20–69%** relative to bounded proportional allocation, with a **35.5% median reduction**. Both methods faced identical account restrictions.
+Doubling the no-gold risk allowance from 25 to 50 bp approximately doubled the added realized tracking risk, while increasing modeled annual savings from **$110 to $115 per $1m**. Each sensitivity is a complete simulation.
 
-[![All nine constrained scenarios: realized annualized tracking error is lower with minimum-risk allocation than proportional allocation; reductions range from 20 to 69 percent.](outputs/wrds/visual_brief/01_risk_aware_allocation.png)](outputs/wrds/visual_brief/01_risk_aware_allocation.png)
+![Baseline and eight no-gold sensitivity specifications comparing added tracking risk with modeled annual cost savings.](outputs/wrds/visual_brief/04_sensitivity_economics.png)
 
-**Read the chart:** tracking error is the annualized standard deviation of active daily returns. Lower tracking error means less variable deviation from the model, not necessarily a higher return or a smaller cumulative return gap.
+[Sensitivity CSV](outputs/wrds/sensitivity_summary.csv) · [Chart calculations and provenance](outputs/wrds/visual_brief/README.md)
 
-[Scenario results, CSV](outputs/wrds/scenario_summary.csv) · [All scenarios and methods](docs/RESULTS.md#complete-scenario-comparison)
-
-### 02 / Sixty percent less turnover saved about $110 a year per $1 million
-
-For the no-gold account, lower-turnover allocation reduced annual one-way turnover from **18.23% to 7.25%**. Realized tracking error increased from **1.37% to 1.64%**. The modeled annual cost benefit was just **1.10 basis points of account value**.
-
-[![No-gold account: turnover falls 60 percent, tracking error increases 27 basis points, and annualized modeled trading costs fall 1.10 basis points of account value.](outputs/wrds/visual_brief/02_turnover_tradeoff.png)](outputs/wrds/visual_brief/02_turnover_tradeoff.png)
-
-**Why it matters:** at 5 bp per dollar bought or sold, avoiding trades in liquid ETFs is inexpensive in dollar terms. The $110 figure scales the annual cost-rate difference to a constant $1 million NAV; it is not an exact CAGR benefit or a guaranteed annual saving. The added-risk estimate has a paired 95% block-bootstrap interval of **20.0–35.6 bp**, conditional on this historical sample.
-
-[Uncertainty intervals, CSV](outputs/wrds/tracking_risk_intervals.csv) · [Cost accounting](docs/METHODOLOGY.md#funding-transaction-costs)
-
-### 03 / Closest tracking did not mean highest return
-
-The no-gold portfolios ended with **$2.26m–$2.46m** from a $1m starting account. The frictionless policy benchmark, which retained its 10% gold allocation, ended at **$2.54m**. Exposure differences—not small trading-cost savings—dominate this comparison.
-
-[![No-gold portfolio growth and rolling tracking risk, 2014–2025. Terminal wealth: minimum risk 2.26 million dollars, proportional 2.42 million, lower turnover 2.46 million, and policy benchmark 2.54 million.](outputs/wrds/visual_brief/03_wealth_and_risk.png)](outputs/wrds/visual_brief/03_wealth_and_risk.png)
-
-**Interpretation:** minimizing active-return variance is not the same objective as maximizing wealth. The observed return ranking is not evidence of alpha.
-
-### 04 / A larger risk allowance reached diminishing cost savings quickly
-
-Doubling the no-gold allowance from 25 to 50 bp roughly doubled the additional realized tracking risk, while increasing modeled annual savings from only **$110 to $115 per $1m**. The chart includes the baseline and all eight sensitivity runs; each is a complete portfolio simulation.
-
-[![All eight no-gold sensitivity specifications and the base case: doubling the risk allowance adds approximately twice the tracking risk, but only five dollars more annual cost savings per million.](outputs/wrds/visual_brief/04_sensitivity_economics.png)](outputs/wrds/visual_brief/04_sensitivity_economics.png)
-
-[Full sensitivity results, CSV](outputs/wrds/sensitivity_summary.csv) · [Visual-brief calculations](outputs/wrds/visual_brief/no_gold_sensitivity_comparison.csv)
-
-## Research design
-
-The policy model allocates **30/10/15/5/20/5/10/5%** to SPY / IWM / EFA / EEM / IEF / TLT / GLD / SHY. Each account starts from the same legacy allocation and $1 million of total-return holdings.
-
-| Implementation | Objective | What changes |
-| :--- | :--- | :--- |
-| **Proportional** | Redistribute model weights within the bounds | No covariance estimate |
-| **Minimum tracking risk** | Minimize estimated active-return variance | Uses lagged Ledoit–Wolf covariance |
-| **Lower turnover** | Minimize trading within a tracking-risk budget | Allows 25 bp above minimum feasible estimated TE |
-
-![Monthly decision sequence: estimate risk and set allocations at the previous month-end close; old holdings earn the next trading day's return; execute at that day's close and fund costs from the account; subsequent returns accrue to the new drifting holdings.](docs/assets/decision-clock.svg)
-
-**Timing discipline:** a return on execution day cannot influence that day's allocation proposal. The old positions earn that return before the planned allocation trades at the close. Holdings then drift until the next rebalance.
-
-[Full methodology](docs/METHODOLOGY.md) · [Data contract and provenance](docs/DATA.md) · [Run configuration](outputs/wrds/run_summary.json)
-
-## Reproduce the research
-
-**To review:** the executed notebook, charts, aggregate CSVs, and PDF are committed and readable without a WRDS login.
-
-**To rerun:** Python 3.10–3.12 and your own licensed WRDS/CRSP access are required. After cloning, creating a virtual environment, and configuring local credentials:
-
-```bash
-python -m pip install -r requirements.txt
-python wrds_data.py --download
-python run_research.py
-python check_notebook.py
-python build_visual_brief.py
-```
-
-There is no Yahoo or simulated-performance fallback. The first run performs all eight sensitivity studies. See the [reproduction guide](docs/REPRODUCING.md) for setup, validation commands, cached reruns, and expected artifacts.
-
-## Evidence and validation
-
-The saved study passed **22 tests**, executed **all eight notebook code cells**, and passed an independent accounting/chronology audit across **4,320 decisions**. The visual-brief metrics reconcile to the underlying daily portfolio records.
-
-- [Data-quality receipt](outputs/wrds/data_quality.json): coverage, identifiers, return flags, and source hashes.
-- [Research audit](outputs/wrds/AUDIT.json): chronology, constraint feasibility, risk budgets, wealth compounding, and self-financing trades.
-- [Validation receipt](outputs/wrds/VALIDATION.json): test and notebook checks.
-- [Visual-brief provenance](outputs/wrds/visual_brief/visual_brief_receipt.json): source hashes and displayed calculations.
-
-Artificial data appear only in validation fixtures, never as market evidence.
+</details>
 
 ## Scope and limitations
 
-This is a retrospective, fixed-universe **ETF implementation study**. It does not model tax lots, calibrated market impact, actual client activity, or production order management. The benchmark is frictionless; account results include assumed trading costs. SHY is a short-duration Treasury fund, not cash. Weight bounds apply at execution closes; interim drift is measured rather than silently corrected.
+- **Research prototype, not a live portfolio platform.** No tax lots, external client cash flows, calibrated market impact, executable share accounting, or production order management. Cumulative contributions are an initial-capital-scaled dollar-P&L decomposition, not Brinson or factor attribution.
+- **Observed returns; assumed implementation.** Account restrictions, policy weights, initial wealth, and transaction costs are experimental assumptions. The benchmark is frictionless. SHY is a Treasury ETF, not cash; interim bound drift is monitored, not silently corrected.
+- **Retrospective evidence.** Current-vintage CRSP and a fixed ETF universe retain revision and retrospective selection limitations. Lagged decisions address return look-ahead, not all point-in-time data issues or future performance.
+- **Bounded independence.** Faults are deliberately injected, not client incidents. The wrong-return replay holds recorded trades fixed: it is a diagnostic comparison, not an investable alternative.
+- **Public aggregates, private licensed rows.** Source security-day records and detailed holdings/trade ledgers are excluded. Built with AI coding and drafting assistance; code, checks, assumptions, and interpretation remain inspectable.
 
-The CRSP extract is current-vintage. Lagged decisions prevent return look-ahead but do not eliminate database revisions or retrospective universe-selection bias. The analysis supports discussion of risk and implementation, not a claim of future outperformance. [Detailed limits →](docs/METHODOLOGY.md#scope)
+## Further reading
 
-## Repository guide
+[Research methodology](docs/METHODOLOGY.md) · [Oversight methodology](docs/OVERSIGHT_METHODOLOGY.md) · [Licensed research setup](docs/REPRODUCING.md) · [Data-quality receipt](outputs/wrds/data_quality.json) · [Accounting audit](outputs/wrds/AUDIT.json)
 
-| Start here | Supporting material |
-| :--- | :--- |
-| [Executed notebook](01_cost_of_customization.ipynb) | The complete empirical narrative |
-| [Results](docs/RESULTS.md) · [Methodology](docs/METHODOLOGY.md) | Findings, definitions, and model assumptions |
-| [Reproduction](docs/REPRODUCING.md) · [Data](docs/DATA.md) | Setup, WRDS access, and licensing |
-| [Research outputs](outputs/wrds/) | Current aggregate results and figures |
-| [Visual brief](outputs/wrds/visual_brief/) | Four charts in PNG/SVG, PDF, and source calculations |
-| [Source map](docs/REPRODUCING.md#source-map) · [Tests](tests/) | Data pipeline, optimizers, simulation, and checks |
-| [Historical archive](archive/README.md) | Superseded Yahoo prototype, explicitly separated |
-
-Licensed source rows and detailed daily simulations remain local and are excluded from Git. Built with pandas, NumPy, scikit-learn, CVXPY/CLARABEL, Matplotlib, and PostgreSQL/libpq, with AI coding assistance.
+[Interview field guide · PDF](outputs/oversight/Interview_Guide.pdf) · [Editable guide · DOCX](outputs/oversight/Interview_Guide.docx) · [60-minute practice and answer key](docs/INTERVIEW_PRACTICE.md) · [Practice PDF](outputs/oversight/Interview_Practice.pdf) · [Practice DOCX](outputs/oversight/Interview_Practice.docx) · [Superseded prototype archive](archive/README.md)
 
 **Josh Gutierrez** · [GitHub](https://github.com/JoshGutierrez56)
