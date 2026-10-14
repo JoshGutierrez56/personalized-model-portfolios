@@ -22,8 +22,9 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
+          cache-dependency-path: requirements-lock.txt
       - name: Install pinned research and reporting environment
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install --require-hashes -r requirements-lock.txt
       - name: Run hand-derived and adversarial tests without licensed data
         run: python -m pytest -q -W error
       - name: Run the clearly artificial public walkthrough

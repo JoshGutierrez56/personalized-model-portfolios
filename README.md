@@ -32,7 +32,7 @@ The dollar figure scales an annual cost-rate difference; it is not an exact CAGR
 
 ## Try the validator—no data subscription required
 
-Use Python 3.10–3.12. Clone the repository and create a virtual environment:
+Use **Python 3.11** for the hash-locked, CI-verified environment. Clone the repository and create a virtual environment:
 
 ```bash
 git clone https://github.com/JoshGutierrez56/personalized-model-portfolios.git
@@ -43,7 +43,7 @@ python -m venv .venv
 Activate it with `.venv\Scripts\Activate.ps1` in Windows PowerShell, or `source .venv/bin/activate` on macOS/Linux. Then:
 
 ```bash
-python -m pip install -r requirements-demo.txt
+python -m pip install --require-hashes -r requirements-demo-lock.txt
 python run_public_demo.py --no-write
 ```
 
@@ -52,11 +52,13 @@ The walkthrough uses **explicitly artificial, hand-derived inputs**: reconcile t
 To run the full public test suite, install the broader environment:
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install --require-hashes -r requirements-lock.txt
 python -m pytest -q -W error
 ```
 
 These tests need no WRDS login. [Reproduction routes and expected inputs](docs/OVERSIGHT_REPRODUCING.md) distinguish this public verification from an empirical rerun with your own licensed source data and original research ledgers. Missing market data stop the research pipeline; there is no synthetic-performance or alternative-vendor fallback.
+
+Dependency inputs remain in `requirements.txt` and `requirements-demo.txt`. The two lock files also pin transitive dependencies and artifact hashes. Refresh deliberately using `uv pip compile <input> --python-version 3.11 --universal --generate-hashes --output-file <lock>` and repeat the checks. Locking the public environment does not supply licensed source observations.
 
 ## How it is built
 
