@@ -29,7 +29,11 @@ jobs:
         run: python -m pytest -q -W error
       - name: Run the clearly artificial public walkthrough
         run: python run_public_demo.py --no-write
+      - name: Verify hypothetical tax-lot transitions and interrupted-write recovery
+        run: python run_transition_lab.py --no-write
+      - name: Render the source-verified transition evidence
+        run: python build_transition_dashboard.py
       - name: Check public evidence consistency and rebuild the dashboard
         run: python build_oversight_dashboard.py
       - name: Verify the committed dashboard matches its evidence
-        run: git diff --exit-code -- docs/index.html
+        run: git diff --exit-code -- docs/index.html docs/transition-lab.html

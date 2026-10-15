@@ -62,6 +62,23 @@ Dependency inputs remain in `requirements.txt` and `requirements-demo.txt`. The 
 
 ## How it is built
 
+### New: tax-lot transition and paper-ledger controls
+
+[**Explore the transition lab**](https://joshgutierrez56.github.io/personalized-model-portfolios/transition-lab.html) · [Decision memo](docs/TRANSITION_DECISION_MEMO.md) · [Recovery runbook](docs/TRANSITION_RUNBOOK.md)
+
+An additive, **explicitly hypothetical** lab extends implementation beyond target weights: two separately funded accounts, lot-level sales, positive-gain tax-reserve budgets, transaction costs and cash floors. Seven budget scenarios expose the risk/cost decision; a separate validator reconstructs the instruction before a local paper journal records it.
+
+In the $85,000 legacy-gains example, the high-basis lot funds the transition: a **$494.64 modeled reserve plus $27.88 fees** reduces illustrative annual tracking risk from **6.37% to 0.33%**. The cash-first account realizes no gains. Eight injected instructions are blocked; atomic-write recovery, duplicate retries, external-flow attribution and split conservation are demonstrated. These are synthetic engineering/decision fixtures, not new historical-performance findings or live operating statistics.
+
+```bash
+python run_transition_lab.py --no-write
+python -m pytest tests/test_transition_lab.py -q -W error
+```
+
+Use the full `requirements-lock.txt` environment. [Bounded policy and exclusions](docs/TRANSITION_LAB_SPEC.md) · [All saved scenarios and controls](outputs/transition_lab/evidence.json) · [Independent challenger](transition_lab/challenger.py)
+
+### Historical-study architecture
+
 | Layer | Inspectable implementation |
 | :--- | :--- |
 | Source and decision clock | [WRDS ingestion](wrds_data.py), [walk-forward simulation](walkforward.py), [data contract](docs/DATA.md) |
@@ -105,7 +122,7 @@ Doubling the no-gold risk allowance from 25 to 50 bp approximately doubled the a
 
 ## Scope and limitations
 
-- **Research prototype, not a live portfolio platform.** No tax lots, external client cash flows, calibrated market impact, executable share accounting, or production order management. Cumulative contributions are an initial-capital-scaled dollar-P&L decomposition, not Brinson or factor attribution.
+- **Research prototype, not a live portfolio platform.** The historical study does not model tax lots or external client cash flows. The separate hypothetical transition lab adds bounded lot/share accounting and paper-ledger flows, not comprehensive tax treatment, calibrated market impact, broker execution or production order management. Historical cumulative contributions are an initial-capital-scaled dollar-P&L decomposition, not Brinson or factor attribution.
 - **Observed returns; assumed implementation.** Account restrictions, policy weights, initial wealth, and transaction costs are experimental assumptions. The benchmark is frictionless. SHY is a Treasury ETF, not cash; interim bound drift is monitored, not silently corrected.
 - **Retrospective evidence.** Current-vintage CRSP and a fixed ETF universe retain revision and retrospective selection limitations. Lagged decisions address return look-ahead, not all point-in-time data issues or future performance.
 - **Bounded independence.** Faults are deliberately injected, not client incidents. The wrong-return replay holds recorded trades fixed: it is a diagnostic comparison, not an investable alternative.

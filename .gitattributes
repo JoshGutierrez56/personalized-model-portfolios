@@ -2,3 +2,9 @@
 # original newlines across Windows/Linux clones instead of autocrlf conversion.
 outputs/oversight/*.json -text whitespace=cr-at-eol
 outputs/wrds/scenario_summary.csv -text whitespace=cr-at-eol
+transition_lab/*.py text eol=lf
+run_transition_lab.py text eol=lf
+build_transition_dashboard.py text eol=lf
+examples/transition_accounts.json text eol=lf
+outputs/transition_lab/*.json -text
+docs/transition-lab.html text eol=lf

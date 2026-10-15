@@ -1,0 +1,42 @@
+{
+  "evidence_type": "hypothetical",
+  "as_of": "2026-10-14",
+  "price_as_of": "2026-10-14",
+  "risk_as_of": "2026-10-13",
+  "symbols": ["US", "INTL", "BOND"],
+  "prices": {"US": 100.0, "INTL": 50.0, "BOND": 100.0},
+  "annual_covariance": [[0.04, 0.018, 0.001], [0.018, 0.0625, 0.0005], [0.001, 0.0005, 0.0064]],
+  "accounts": [
+    {
+      "account_id": "legacy-gains",
+      "cash": 10000.0,
+      "cash_floor": 1000.0,
+      "tax_budget": 500.0,
+      "new_lot_tax_rate": 0.20,
+      "target": {"US": 0.40, "INTL": 0.25, "BOND": 0.30},
+      "blocked": [],
+      "caps": {"US": 0.80, "INTL": 0.60, "BOND": 0.70},
+      "lots": [
+        {"lot_id": "us-low-basis", "symbol": "US", "shares": 300.0, "basis_per_share": 20.0, "tax_rate": 0.20, "acquired": "2020-01-02"},
+        {"lot_id": "us-high-basis", "symbol": "US", "shares": 300.0, "basis_per_share": 90.0, "tax_rate": 0.20, "acquired": "2025-01-02"},
+        {"lot_id": "intl-underwater", "symbol": "INTL", "shares": 100.0, "basis_per_share": 60.0, "tax_rate": 0.20, "acquired": "2023-01-03"},
+        {"lot_id": "bond-flat", "symbol": "BOND", "shares": 100.0, "basis_per_share": 100.0, "tax_rate": 0.20, "acquired": "2023-01-03"}
+      ]
+    },
+    {
+      "account_id": "cash-first",
+      "cash": 20000.0,
+      "cash_floor": 1500.0,
+      "tax_budget": 500.0,
+      "new_lot_tax_rate": 0.20,
+      "target": {"US": 0.40, "INTL": 0.25, "BOND": 0.30},
+      "blocked": [],
+      "caps": {"US": 0.80, "INTL": 0.60, "BOND": 0.70},
+      "lots": [
+        {"lot_id": "us-existing", "symbol": "US", "shares": 300.0, "basis_per_share": 80.0, "tax_rate": 0.20, "acquired": "2023-01-03"},
+        {"lot_id": "intl-existing", "symbol": "INTL", "shares": 100.0, "basis_per_share": 45.0, "tax_rate": 0.20, "acquired": "2023-01-03"},
+        {"lot_id": "bond-existing", "symbol": "BOND", "shares": 200.0, "basis_per_share": 100.0, "tax_rate": 0.20, "acquired": "2023-01-03"}
+      ]
+    }
+  ]
+}

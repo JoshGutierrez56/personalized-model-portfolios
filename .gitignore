@@ -16,6 +16,10 @@ outputs/synthetic/
 *.html
 !outputs/oversight/index.html
 !docs/index.html
+!docs/transition-lab.html
+outputs/transition_private/
+*.sqlite
+*.db
 .env
 .env.*
 *.log

@@ -60,6 +60,7 @@ function controls(){const mode=$('control-filter').value,query=$('control-search
     target.write_text(template.replace("__DATA__", encoded), encoding="utf-8")
     # Static site links need repository-hosted raw downloads, not absent Pages output paths.
     html = target.read_text(encoding="utf-8")
+    html = html.replace('Source &amp; reproducibility</a>', 'Source &amp; reproducibility</a><a href="transition-lab.html">Tax-lot transition lab · hypothetical</a>')
     html = html.replace('href="../outputs/', 'href="https://raw.githubusercontent.com/JoshGutierrez56/personalized-model-portfolios/main/outputs/')
     html = html.replace('href="OVERSIGHT_METHODOLOGY.md"', 'href="https://github.com/JoshGutierrez56/personalized-model-portfolios/blob/main/docs/OVERSIGHT_METHODOLOGY.md"')
     target.write_text(html, encoding="utf-8")
